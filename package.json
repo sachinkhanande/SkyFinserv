@@ -1,0 +1,59 @@
+{
+  "name": "skyfinserv",
+  "version": "1.0.0",
+  "description": "SkyFinserv Loan Application Portal",
+  "main": "main.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "electron": "electron .",
+    "electron:dev": "electron .",
+    "build:exe": "electron-builder --win nsis",
+    "dist": "electron-builder --win nsis"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mysql2": "^3.6.5",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
+    "nodemon": "^3.0.2"
+  },
+  "build": {
+    "appId": "com.skyfinserv.loanportal",
+    "productName": "SkyFinserv",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "server.js",
+      "main.js",
+      "preload.js",
+      "skyfinserv-app.html",
+      ".env",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SkyFinserv"
+    }
+  }
+}

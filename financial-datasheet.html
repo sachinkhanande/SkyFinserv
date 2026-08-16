@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SkyFinserv — Financial Datasheet & Underwriting CAM Matrix</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #0D1B2A; --navy2: #1A2E45; --navy3: #243B55;
+      --gold: #F5A623; --gold-deep: #D4881A; --teal: #00B894;
+      --teal-deep: #00897B; --blue: #2563EB; --paper: #F4F6FA;
+      --slate: #4A5568; --line: rgba(13,27,42,0.12);
+      --font-display: 'Fraunces', Georgia, serif;
+      --font-body: 'Inter', system-ui, sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; font-family: var(--font-body); background: var(--paper); color: var(--navy); }
+    
+    .topbar {
+      height: 64px; background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+      color: #fff; padding: 0 32px; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 3px solid var(--gold);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark { width: 36px; height: 36px; border-radius: 8px; background: var(--gold); color: var(--navy); font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .brand-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+    
+    .fd-wrapper { padding: 24px 32px 60px; }
+    .fd-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+    .fd-title { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin: 0 0 4px; }
+    .fd-sub { color: var(--slate); font-size: 13px; }
+    
+    .btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-amber { background: linear-gradient(135deg, var(--gold) 0%, var(--gold-deep) 100%); color: var(--navy); }
+    .btn-primary { background: var(--navy); color: #fff; }
+    .btn-success { background: var(--teal); color: #fff; }
+    .btn-ghost { background: #fff; border: 1.5px solid var(--line); color: var(--navy); }
+    
+    .fd-kpi-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .fd-kpi-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .fd-kpi-card:hover {
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .fd-kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: #94a3b8;
+    }
+
+    .fd-kpi-card.highlight::before {
+      background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+    }
+
+    .fd-kpi-card.yellow::before {
+      background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .fd-kpi-card .fd-kpi-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .fd-kpi-card .fd-kpi-val {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+      font-family: var(--font-mono);
+      letter-spacing: -0.02em;
+    }
+
+    .fd-kpi-card.highlight .fd-kpi-val {
+      color: #047857;
+    }
+
+    .fd-kpi-card.yellow .fd-kpi-val {
+      color: #b45309;
+    }
+
+    .fd-matrix-container {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      padding: 0;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+      overflow-x: auto;
+    }
+
+    .fd-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-family: var(--font-body);
+      font-size: 12.5px;
+      white-space: nowrap;
+    }
+
+    .fd-table th,
+    .fd-table td {
+      border-right: 1px solid #e2e8f0;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: middle;
+      transition: background-color 0.15s ease;
+    }
+
+    .fd-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .fd-header-role {
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+      color: #ffffff !important;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 13px;
+      text-align: center;
+      padding: 10px 14px !important;
+      border-bottom: 2px solid #0f172a !important;
+      letter-spacing: 0.02em;
+    }
+
+    .fd-header-role .fd-input {
+      color: #ffffff !important;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .fd-remove-btn {
+      border: none;
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      transition: all 0.15s ease;
+      margin-left: 6px;
+    }
+
+    .fd-remove-btn:hover {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    .fd-header-summary,
+    .fd-yellow-hdr {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
+      color: #78350f !important;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 12.5px;
+      text-align: center;
+      border-bottom: 2px solid #f59e0b !important;
+      letter-spacing: 0.03em;
+      padding: 10px 14px !important;
+    }
+
+    .fd-row-lbl {
+      background: #f8fafc !important;
+      font-weight: 600;
+      color: #334155;
+      width: 240px;
+      min-width: 240px;
+      position: sticky;
+      left: 0;
+      z-index: 10;
+      border-right: 2px solid #cbd5e1 !important;
+      box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.04);
+    }
+
+    tr:hover .fd-row-lbl {
+      background: #f1f5f9 !important;
+    }
+
+    th.fd-row-lbl {
+      background: #0f172a !important;
+      color: #f8fafc !important;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      top: 0;
+      z-index: 25;
+    }
+
+    .fd-entity-cell {
+      background: #f1f5f9;
+      text-align: center;
+    }
+
+    .fd-yellow-col {
+      background: #fffbeb !important;
+      text-align: right;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #78350f !important;
+      border-left: 1px solid #fde68a;
+    }
+
+    tr:hover .fd-yellow-col {
+      background: #fef3c7 !important;
+    }
+
+    .fd-input {
+      width: 100%;
+      font-family: var(--font-body);
+      font-size: 12.5px;
+      padding: 5px 8px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: #0f172a;
+      text-align: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .fd-input:hover {
+      border-color: #cbd5e1;
+      background: #ffffff;
+    }
+
+    .fd-input:focus {
+      border-color: #2563eb;
+      background: #ffffff;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .fd-num-input {
+      text-align: right;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .fd-negative {
+      color: #dc2626 !important;
+      font-weight: 700;
+    }
+
+    .fd-bold {
+      font-weight: 700;
+    }
+
+    .fd-itr-row td {
+      background: #e0e7ff !important;
+      color: #1e1b4b !important;
+      font-weight: 700;
+      border-bottom: 2px solid #c7d2fe !important;
+    }
+
+    .fd-subtotal-row td {
+      background: #ecfdf5 !important;
+      color: #065f46 !important;
+      font-weight: 700 !important;
+      border-top: 2px solid #10b981 !important;
+      border-bottom: 2px solid #10b981 !important;
+      font-size: 13px;
+    }
+
+    .fd-subtotal-row .fd-row-lbl {
+      background: #d1fae5 !important;
+      color: #065f46 !important;
+    }
+
+    .fd-table tbody tr:nth-child(even) td:not(.fd-row-lbl):not(.fd-yellow-col) {
+      background-color: #ffffff;
+    }
+
+    .fd-table tbody tr:nth-child(odd) td:not(.fd-row-lbl):not(.fd-yellow-col) {
+      background-color: #f8fafc;
+    }
+
+    .fd-table tbody tr:hover td:not(.fd-row-lbl):not(.fd-yellow-col) {
+      background-color: #edf2f7;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-title">SkyFinserv — Financial Underwriting Desk</div>
+    </div>
+    <div>
+      <a href="skyfinserv-app.html" style="color:#fff;text-decoration:none;font-weight:600;font-size:13px;background:rgba(255,255,255,.15);padding:8px 16px;border-radius:8px;">← Return to Main Portal</a>
+    </div>
+  </div>
+
+  <div class="fd-wrapper">
+    <div class="fd-header">
+      <div>
+        <h1 class="fd-title">📈 Financial Datasheet (CAM Assessment & Income Matrix)</h1>
+        <div class="fd-sub">Multi-applicant 3-year ITR assessment matrix with live 2-Yr Average & Considered Income calculations.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-ghost" onclick="fdResetPreset()">⚡ Reset Matrix</button>
+        <button class="btn btn-success" onclick="fdSave()">💾 Save</button>
+        <button class="btn btn-amber" onclick="fdExportExcel()">⬇ Export Excel</button>
+        <label class="btn btn-ghost" style="cursor:pointer;margin:0;">📁 Import Excel <input type="file" accept=".xlsx, .xls" style="display:none;" onchange="fdImportExcel(event)"/></label>
+        <button class="btn btn-ghost" onclick="window.print()">📄 Print / PDF</button>
+      </div>
+    </div>
+
+    <div class="fd-kpi-bar" id="kpi-bar"></div>
+    <div class="fd-matrix-container" id="matrix-container"></div>
+  </div>
+
+  <script>
+    let fdData = {
+      title: "Financial & Underwriting CAM Matrix",
+      entities: [
+        {
+          role: "Applicant", name: "Padiya Imaging Pvt. Ltd", doj: "23-Oct-20", vintage: "5", employer: "Padiya Imaging Pvt. Ltd", dob: "", age: "", businessAddress: "",
+          years: [
+            { date: "24-Oct-25", turnover: 13703062, netIncome: -4299516, depreciation: 4054947, interest: 3302514, rent: 0, addIncome: 0, taxPaid: 0 },
+            { date: "21-Sep-24", turnover: 5521044, netIncome: 713657, depreciation: 1408378, interest: 1109382, rent: 0, addIncome: 0, taxPaid: 123625 },
+            { date: "5-Oct-23", turnover: 4450700, netIncome: 138761, depreciation: 1389573, interest: 982000, rent: 0, addIncome: 0, taxPaid: 0 }
+          ]
+        },
+        {
+          role: "Applicant", name: "Govind Poonamchand Padiya", doj: "", vintage: "", employer: "Padiya X-ray and Sonography clinic", dob: "18-07-1962", age: "64", businessAddress: "",
+          years: [
+            { date: "31-Oct-25", turnover: 4961514, netIncome: 1520092, depreciation: 742061, interest: 1865560, rent: 0, addIncome: 0, taxPaid: 172895 },
+            { date: "23-Oct-24", turnover: 6062733, netIncome: 1787329, depreciation: 1006952, interest: 0, rent: 0, addIncome: 121100, taxPaid: 294936 },
+            { date: "14-Oct-23", turnover: 6272057, netIncome: 1647220, depreciation: 1408718, interest: 0, rent: 90000, addIncome: 0, taxPaid: 209372 }
+          ]
+        },
+        {
+          role: "Co-Applicant-1", name: "Hema Govind Padiya", doj: "", vintage: "", employer: "", dob: "02-10-1968", age: "58", businessAddress: "",
+          years: [
+            { date: "30-Dec-25", turnover: 0, netIncome: 300000, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 10000 },
+            { date: "17-Dec-24", turnover: 0, netIncome: 300000, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 141625 },
+            { date: "19-Dec-23", turnover: 0, netIncome: 300000, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 1000 }
+          ]
+        },
+        {
+          role: "Co-Applicant-1", name: "Saurabh Govind Padiya", doj: "", vintage: "", employer: "", dob: "19-Nov-93", age: "33", businessAddress: "",
+          years: [
+            { date: "10-Sep-25", turnover: 0, netIncome: 600000, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 },
+            { date: "29-Jul-24", turnover: 0, netIncome: 687452, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 },
+            { date: "14-Jul-23", turnover: 0, netIncome: 556188, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 }
+          ]
+        }
+      ],
+      loans: [
+        { loanBelongsTo: 'Padia Imaging', loanProvider: 'Bank of India', type: 'GCTMSME', amount: 32700000, tenure: '', startDate: '24-04-2024', emi: 500000, emiPaid: '', outstanding: 29064399, overdueCharges: '', bounceCount: '', obligation: 'yes', bt: 'No', emiReflectedIn: 'boi-626' },
+        { loanBelongsTo: 'Govind Padiya', loanProvider: 'Bajaj', type: 'Flexy Od', amount: 6081559, tenure: 96, startDate: '02-10-2024', emi: 69685, emiPaid: 19, outstanding: 9627863, overdueCharges: '', bounceCount: '', obligation: 'yes', bt: 'No', emiReflectedIn: 'boi 11367' },
+        { loanBelongsTo: 'Govind Padiya', loanProvider: 'HDB', type: 'LAP', amount: 17800000, tenure: 108, startDate: '28-08-2023', emi: 245809, emiPaid: 31, outstanding: 14125307, overdueCharges: '', bounceCount: 1, obligation: 'No', bt: 'No', emiReflectedIn: 'boi 11367' },
+        { loanBelongsTo: 'Govind Padiya ( Rohan)', loanProvider: 'BOI', type: 'Edu. L', amount: 2500000, tenure: '', startDate: '09-09-2024', emi: 25000, emiPaid: '', outstanding: 2660643, overdueCharges: '', bounceCount: '', obligation: 'No', bt: 'No', emiReflectedIn: '' },
+        { loanBelongsTo: 'Govind Padiya', loanProvider: 'BOI', type: 'Credit card', amount: 265260, tenure: '', startDate: '', emi: 0, emiPaid: '', outstanding: 0, overdueCharges: '', bounceCount: '', obligation: 'No', bt: 'No', emiReflectedIn: '' },
+        { loanBelongsTo: 'Govind Padiya', loanProvider: 'BOI', type: 'GL', amount: 500608, tenure: '', startDate: '', emi: 0, emiPaid: '', outstanding: 0, overdueCharges: '', bounceCount: '', obligation: 'No', bt: 'No', emiReflectedIn: '' },
+        { loanBelongsTo: 'Govind Padiya', loanProvider: 'KOTAK', type: 'BT', amount: 5194000, tenure: 132, startDate: '05-05-2026', emi: 58735, emiPaid: 1, outstanding: 5194000, overdueCharges: '', bounceCount: '', obligation: 'yes', bt: 'No', emiReflectedIn: 'BOI-3367' },
+        { loanBelongsTo: 'Govind Padiya', loanProvider: 'KOTAK', type: 'TOP UP', amount: 12806000, tenure: 180, startDate: '', emi: 123122, emiPaid: 0, outstanding: 12806000, overdueCharges: '', bounceCount: '', obligation: 'yes', bt: 'No', emiReflectedIn: 'BOI-3367' },
+        { loanBelongsTo: 'Govind Padia', loanProvider: 'ABC', type: 'DLOD', amount: 2000000, tenure: 60, startDate: '05-04-2026', emi: 45500, emiPaid: 1, outstanding: 2000000, overdueCharges: '', bounceCount: '', obligation: 'yes', bt: 'No', emiReflectedIn: 'BOI-3367' }
+      ]
+    };
+
+    function computeTotals(key) {
+      let considerSum = 0, yr1yr2Sum = 0;
+      fdData.entities.forEach(ent => {
+        const y1 = ent.years[0] ? Number(ent.years[0][key]) || 0 : 0;
+        const y2 = ent.years[1] ? Number(ent.years[1][key]) || 0 : 0;
+        considerSum += y1;
+        yr1yr2Sum += (y1 + y2);
+      });
+      return { considerSum, avg2yr: Math.round(yr1yr2Sum / 2) };
+    }
+
+    function computeLoanTotals() {
+      const loans = fdData.loans || [];
+      let totAmount = 0, totTenure = 0, totEmi = 0, totEmiPaid = 0, totOutstanding = 0, totOverdue = 0, totBounce = 0, totEmiObligation = 0, totBtEmi = 0, totBtAmount = 0;
+      loans.forEach(l => {
+        const amt = Number(l.amount) || 0;
+        const ten = Number(l.tenure) || 0;
+        const emi = Number(l.emi) || 0;
+        const paid = Number(l.emiPaid) || 0;
+        const out = Number(l.outstanding) || 0;
+        const ovd = Number(l.overdueCharges) || 0;
+        const bnc = Number(l.bounceCount) || 0;
+
+        const isObl = String(l.obligation || '').toLowerCase() === 'yes';
+        const isBt = String(l.bt || '').toLowerCase() === 'yes';
+
+        totAmount += amt;
+        totTenure += ten;
+        totEmi += emi;
+        totEmiPaid += paid;
+        totOutstanding += out;
+        totOverdue += ovd;
+        totBounce += bnc;
+        totEmiObligation += isObl ? emi : 0;
+        totBtEmi += isBt ? emi : 0;
+        totBtAmount += isBt ? out : 0;
+      });
+      return { totAmount, totTenure, totEmi, totEmiPaid, totOutstanding, totOverdue, totBounce, totEmiObligation, totBtEmi, totBtAmount };
+    }
+
+    function formatNum(val) {
+      if (val === undefined || val === null || val === '' || val === 0) return '-';
+      const num = Number(val);
+      if (isNaN(num)) return val;
+      if (num < 0) return `(${Math.abs(num).toLocaleString('en-IN')})`;
+      return num.toLocaleString('en-IN');
+    }
+
+    function render() {
+      const turnoverTot = computeTotals('turnover');
+      const netTot      = computeTotals('netIncome');
+      const deprTot     = computeTotals('depreciation');
+      const intTot      = computeTotals('interest');
+      const rentTot     = computeTotals('rent');
+      const addIncTot   = computeTotals('addIncome');
+      const taxTot      = computeTotals('taxPaid');
+
+      const loanTotals = computeLoanTotals();
+
+      const consideredCashflow = netTot.considerSum + deprTot.considerSum + intTot.considerSum - taxTot.considerSum;
+      const avg2yrCashflow     = netTot.avg2yr + deprTot.avg2yr + intTot.avg2yr + addIncTot.avg2yr - taxTot.avg2yr;
+
+      const monthlyIncome = Math.round((avg2yrCashflow > 0 ? avg2yrCashflow : consideredCashflow) / 12);
+      const totalObligations = loanTotals.totEmiObligation;
+      const maxEmi = Math.max(0, Math.round((monthlyIncome * 0.5) - totalObligations));
+      const maxLoan = Math.round((maxEmi / 1105) * 100000);
+
+      document.getElementById('kpi-bar').innerHTML = `
+        <div class="fd-kpi-card highlight"><div class="fd-kpi-lbl">Total Considered Income</div><div class="fd-kpi-val">${formatNum(consideredCashflow)}</div></div>
+        <div class="fd-kpi-card yellow"><div class="fd-kpi-lbl">2-Yr Average Income</div><div class="fd-kpi-val">${formatNum(avg2yrCashflow)}</div></div>
+        <div class="fd-kpi-card"><div class="fd-kpi-lbl">Net Monthly Cashflow</div><div class="fd-kpi-val">₹${monthlyIncome.toLocaleString('en-IN')}</div></div>
+        <div class="fd-kpi-card" style="border-left:4px solid #ef4444;"><div class="fd-kpi-lbl" style="color:#dc2626;">Total Monthly Obligations</div><div class="fd-kpi-val" style="color:#dc2626;">₹${totalObligations.toLocaleString('en-IN')}</div></div>
+        <div class="fd-kpi-card"><div class="fd-kpi-lbl">Net Max EMI (50% FOIR)</div><div class="fd-kpi-val">₹${maxEmi.toLocaleString('en-IN')}</div></div>
+        <div class="fd-kpi-card highlight"><div class="fd-kpi-lbl">Est. Max Loan Limit</div><div class="fd-kpi-val">₹${(maxLoan/100000).toFixed(2)} Lakhs</div></div>
+      `;
+
+      let html = `
+      <div style="font-family:var(--font-display);font-weight:700;font-size:16px;margin:10px 0 10px;padding:10px 16px;background:linear-gradient(135deg, #1e293b 0%, #334155 100%);color:#ffffff;border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
+        <span>🏢 Business Details</span>
+        <button class="btn btn-primary" style="background:#fff;color:#1e293b;" onclick="fdAddEntity()">＋ Add Entity</button>
+      </div>
+
+      <table class="fd-table"><thead><tr><th class="fd-row-lbl">Financial Parameter</th>`;
+      fdData.entities.forEach((e, idx) => {
+        html += `<th colspan="3" class="fd-header-role">
+          <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+            <input class="fd-input fd-bold" style="text-align:center;" value="${e.role}" onchange="fdData.entities[${idx}].role=this.value;render()"/>
+            <button class="fd-remove-btn" title="Remove entity" onclick="fdData.entities.splice(${idx},1);render()">✕</button>
+          </div>
+        </th>`;
+      });
+      html += `<th class="fd-header-summary fd-yellow-hdr" style="min-width:140px;">Consider Income</th><th class="fd-header-summary fd-yellow-hdr" style="min-width:140px;">Average of 2yr</th></tr>`;
+
+      // Name row
+      html += `<tr><td class="fd-row-lbl">Name</td>`;
+      fdData.entities.forEach((e, idx) => {
+        html += `<td colspan="3" class="fd-entity-cell fd-bold"><input class="fd-input fd-bold" style="text-align:center;" value="${e.name}" onchange="fdData.entities[${idx}].name=this.value;render()"/></td>`;
+      });
+      html += `<td class="fd-yellow-col"></td><td class="fd-yellow-col"></td></tr>`;
+
+      // DOJ / Vintage row
+      html += `<tr><td class="fd-row-lbl">DOJ / Vintage in Yrs</td>`;
+      fdData.entities.forEach((e, idx) => {
+        html += `<td colspan="2" class="fd-entity-cell"><input class="fd-input" style="text-align:center;" value="${e.doj}" onchange="fdData.entities[${idx}].doj=this.value;render()"/></td>
+        <td class="fd-entity-cell fd-bold" style="width:60px;text-align:center;"><input class="fd-input fd-bold" style="text-align:center;" value="${e.vintage}" onchange="fdData.entities[${idx}].vintage=this.value;render()"/></td>`;
+      });
+      html += `<td class="fd-yellow-col"></td><td class="fd-yellow-col"></td></tr>`;
+
+      // Employer row
+      html += `<tr><td class="fd-row-lbl">Business/Employer Name</td>`;
+      fdData.entities.forEach((e, idx) => {
+        html += `<td colspan="3" class="fd-entity-cell"><input class="fd-input" style="text-align:center;" value="${e.employer}" onchange="fdData.entities[${idx}].employer=this.value;render()"/></td>`;
+      });
+      html += `<td class="fd-yellow-col"></td><td class="fd-yellow-col"></td></tr>`;
+
+      // DOB / Age row
+      html += `<tr><td class="fd-row-lbl">DOB / Age in yrs</td>`;
+      fdData.entities.forEach((e, idx) => {
+        html += `<td colspan="2" class="fd-entity-cell"><input class="fd-input" style="text-align:center;" value="${e.dob}" onchange="fdData.entities[${idx}].dob=this.value;render()"/></td>
+        <td class="fd-entity-cell fd-bold" style="width:60px;text-align:center;"><input class="fd-input fd-bold" style="text-align:center;" value="${e.age}" onchange="fdData.entities[${idx}].age=this.value;render()"/></td>`;
+      });
+      html += `<td class="fd-yellow-col"></td><td class="fd-yellow-col"></td></tr>`;
+
+      // ITR Date Row
+      html += `<tr class="fd-itr-row"><td class="fd-row-lbl">ITR/Salary DATE</td>`;
+      fdData.entities.forEach((e, eIdx) => {
+        e.years.forEach((y, yIdx) => {
+          html += `<td style="text-align:center;font-weight:700;min-width:95px;"><input class="fd-input fd-bold" style="text-align:center;" value="${y.date}" onchange="fdData.entities[${eIdx}].years[${yIdx}].date=this.value;render()"/></td>`;
+        });
+      });
+      html += `<td class="fd-yellow-col fd-bold" style="text-align:center;">Consider Income</td><td class="fd-yellow-col fd-bold" style="text-align:center;">Average of 2yr</td></tr></thead><tbody>`;
+
+      const numRows = [
+        { label: 'Turnover', key: 'turnover', totals: turnoverTot },
+        { label: 'Net Business/salary income', key: 'netIncome', totals: netTot },
+        { label: 'Depreciation', key: 'depreciation', totals: deprTot },
+        { label: 'Interest paid to bank/ partner', key: 'interest', totals: intTot },
+        { label: 'Rent Received', key: 'rent', totals: rentTot },
+        { label: 'Additional income / Remuneration', key: 'addIncome', totals: addIncTot },
+        { label: 'Tax PAID', key: 'taxPaid', totals: taxTot },
+      ];
+
+      numRows.forEach(nr => {
+        html += `<tr><td class="fd-row-lbl">${nr.label}</td>`;
+        fdData.entities.forEach((e, eIdx) => {
+          e.years.forEach((y, yIdx) => {
+            const val = y[nr.key];
+            const isNeg = val < 0;
+            html += `<td class="fd-num-input ${isNeg?'fd-negative':''}"><input class="fd-input fd-num-input ${isNeg?'fd-negative':''}" value="${val?val:''}" placeholder="-" oninput="fdData.entities[${eIdx}].years[${yIdx}]['${nr.key}']=Number(this.value)||0;render()"/></td>`;
+          });
+        });
+        html += `<td class="fd-yellow-col ${nr.totals.considerSum<0?'fd-negative':''}">${formatNum(nr.totals.considerSum)}</td><td class="fd-yellow-col ${nr.totals.avg2yr<0?'fd-negative':''}">${formatNum(nr.totals.avg2yr)}</td></tr>`;
+      });
+
+      html += `<tr class="fd-subtotal-row"><td class="fd-row-lbl">Gross Cashflow Subtotal</td>`;
+      fdData.entities.forEach(e => {
+        e.years.forEach(y => {
+          const cf = (y.netIncome||0) + (y.depreciation||0) + (y.interest||0) + (y.rent||0) + (y.addIncome||0) - (y.taxPaid||0);
+          html += `<td class="fd-num-input fd-bold">${formatNum(cf)}</td>`;
+        });
+      });
+      html += `<td class="fd-yellow-col fd-bold">${formatNum(consideredCashflow)}</td><td class="fd-yellow-col fd-bold">${formatNum(avg2yrCashflow)}</td></tr>`;
+
+      html += `</tbody></table>`;
+
+      // Loan Details Section
+      html += `
+      <div style="font-family:var(--font-display);font-weight:700;font-size:16px;margin:32px 0 10px;padding:10px 16px;background:linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);color:#78350f;border-left:5px solid #f59e0b;border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
+        <span>💳 Loan Details (Existing Loan Obligations & Balance Transfer Matrix)</span>
+        <button class="btn btn-primary" onclick="fdAddLoanRow()">＋ Add Loan</button>
+      </div>
+
+      <table class="fd-table">
+        <thead>
+          <tr style="background:#1e293b;color:#fff;">
+            <th style="background:#1e293b;color:#fff;">Loan belongs to</th>
+            <th style="background:#1e293b;color:#fff;">Loan Provider</th>
+            <th style="background:#1e293b;color:#fff;">Type</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">Amount</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">Tenur</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">Loan/ EMI Start Date</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">EMI / Interest</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">No. of EMI Paid</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">Outstanding Amount</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">Over due charges</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">No. Bounce</th>
+            <th style="background:#f59e0b;color:#78350f;text-align:center;">Obligation</th>
+            <th style="background:#f59e0b;color:#78350f;text-align:right;">EMI obligation</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">BT</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">BT EMI</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">BT Amount</th>
+            <th style="background:#334155;color:#fff;">EMI Reflected in</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(fdData.loans || []).map((l, lIdx) => {
+            const isObl = String(l.obligation || '').toLowerCase() === 'yes';
+            const isBt = String(l.bt || '').toLowerCase() === 'yes';
+            const emiOblVal = isObl ? Number(l.emi || 0) : 0;
+            const btEmiVal = isBt ? Number(l.emi || 0) : 0;
+            const btAmtVal = isBt ? Number(l.outstanding || 0) : 0;
+            const isYellow = l.outstanding == 9627863 || String(l.loanProvider || '').toLowerCase().includes('bajaj');
+
+            return `
+            <tr style="${isYellow ? 'background:#fef9c3;' : ''}">
+              <td><input class="fd-input" value="${l.loanBelongsTo || ''}" placeholder="Borrower name" oninput="fdData.loans[${lIdx}].loanBelongsTo=this.value;render()"/></td>
+              <td><input class="fd-input fd-bold" value="${l.loanProvider || ''}" placeholder="Bank / NBFC" oninput="fdData.loans[${lIdx}].loanProvider=this.value;render()"/></td>
+              <td><input class="fd-input" value="${l.type || ''}" placeholder="Type" oninput="fdData.loans[${lIdx}].type=this.value;render()"/></td>
+              <td><input class="fd-input fd-num-input" value="${l.amount !== undefined ? l.amount : ''}" placeholder="0" oninput="fdData.loans[${lIdx}].amount=Number(this.value)||0;render()"/></td>
+              <td style="width:70px;text-align:center;"><input class="fd-input" style="text-align:center;" value="${l.tenure !== undefined ? l.tenure : ''}" placeholder="Months" oninput="fdData.loans[${lIdx}].tenure=this.value;render()"/></td>
+              <td style="width:110px;text-align:center;"><input class="fd-input" style="text-align:center;" value="${l.startDate || ''}" placeholder="DD-MM-YYYY" oninput="fdData.loans[${lIdx}].startDate=this.value;render()"/></td>
+              <td><input class="fd-input fd-num-input" value="${l.emi !== undefined ? l.emi : ''}" placeholder="0" oninput="fdData.loans[${lIdx}].emi=Number(this.value)||0;render()"/></td>
+              <td style="width:80px;text-align:center;"><input class="fd-input" style="text-align:center;" value="${l.emiPaid !== undefined ? l.emiPaid : ''}" placeholder="-" oninput="fdData.loans[${lIdx}].emiPaid=this.value;render()"/></td>
+              <td style="${isYellow ? 'background:#fde047;font-weight:700;' : ''}"><input class="fd-input fd-num-input fd-bold" value="${l.outstanding !== undefined ? l.outstanding : ''}" placeholder="0" oninput="fdData.loans[${lIdx}].outstanding=Number(this.value)||0;render()"/></td>
+              <td><input class="fd-input fd-num-input" value="${l.overdueCharges !== undefined ? l.overdueCharges : ''}" placeholder="-" oninput="fdData.loans[${lIdx}].overdueCharges=this.value;render()"/></td>
+              <td style="width:80px;text-align:center;"><input class="fd-input" style="text-align:center;font-weight:700;color:#dc2626;" value="${l.bounceCount !== undefined ? l.bounceCount : ''}" placeholder="-" oninput="fdData.loans[${lIdx}].bounceCount=this.value;render()"/></td>
+              
+              <td style="text-align:center;background:#fffbe0;">
+                <select class="fd-input fd-bold" style="text-align:center;color:${isObl ? '#dc2626' : '#64748b'};" onchange="fdData.loans[${lIdx}].obligation=this.value;render()">
+                  <option value="yes" ${isObl ? 'selected' : ''}>yes</option>
+                  <option value="No" ${!isObl ? 'selected' : ''}>No</option>
+                </select>
+              </td>
+              
+              <td class="fd-yellow-col fd-bold" style="text-align:right;color:${isObl ? '#dc2626' : '#475569'}; font-family:var(--font-mono);">
+                ${isObl ? formatNum(emiOblVal) : '-'}
+              </td>
+
+              <td style="text-align:center;">
+                <select class="fd-input" style="text-align:center;" onchange="fdData.loans[${lIdx}].bt=this.value;render()">
+                  <option value="No" ${!isBt ? 'selected' : ''}>No</option>
+                  <option value="yes" ${isBt ? 'selected' : ''}>yes</option>
+                </select>
+              </td>
+
+              <td style="text-align:right;font-family:var(--font-mono);">${isBt ? formatNum(btEmiVal) : '-'}</td>
+              <td style="text-align:right;font-family:var(--font-mono);">${isBt ? formatNum(btAmtVal) : '-'}</td>
+              
+              <td><input class="fd-input" value="${l.emiReflectedIn || ''}" placeholder="Account ref" oninput="fdData.loans[${lIdx}].emiReflectedIn=this.value;render()"/></td>
+              <td style="text-align:center;">
+                <button class="fd-remove-btn" title="Delete Loan Row" onclick="fdData.loans.splice(${lIdx},1);render()">✕</button>
+              </td>
+            </tr>`;
+          }).join('')}
+
+          <tr style="background:#fef3c7;font-weight:700;border-top:2px solid #f59e0b;font-family:var(--font-mono);">
+            <td style="font-weight:800;color:#78350f;">Total</td>
+            <td></td>
+            <td></td>
+            <td style="text-align:right;">${formatNum(loanTotals.totAmount)}</td>
+            <td style="text-align:center;">${loanTotals.totTenure || '-'}</td>
+            <td></td>
+            <td style="text-align:right;">${formatNum(loanTotals.totEmi)}</td>
+            <td style="text-align:center;">${loanTotals.totEmiPaid || '-'}</td>
+            <td style="text-align:right;">${formatNum(loanTotals.totOutstanding)}</td>
+            <td style="text-align:right;">${formatNum(loanTotals.totOverdue)}</td>
+            <td style="text-align:center;color:#dc2626;">${loanTotals.totBounce || '-'}</td>
+            <td style="text-align:center;color:#dc2626;">No</td>
+            <td style="text-align:right;color:#dc2626;font-size:13.5px;">${formatNum(loanTotals.totEmiObligation)}</td>
+            <td style="text-align:center;">-</td>
+            <td style="text-align:right;">${formatNum(loanTotals.totBtEmi)}</td>
+            <td style="text-align:right;">${formatNum(loanTotals.totBtAmount)}</td>
+            <td></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>`;
+
+      document.getElementById('matrix-container').innerHTML = html;
+    }
+
+    function fdAddLoanRow() {
+      if (!fdData.loans) fdData.loans = [];
+      fdData.loans.push({
+        loanBelongsTo: '', loanProvider: '', type: '', amount: '', tenure: '', startDate: '', emi: '', emiPaid: '', outstanding: '', overdueCharges: '', bounceCount: '', obligation: 'yes', bt: 'No', emiReflectedIn: ''
+      });
+      render();
+    }
+
+    function fdAddEntity() {
+      fdData.entities.push({
+        role: `Co-Applicant-${fdData.entities.length}`, name: `New Entity ${fdData.entities.length+1}`, doj: '', vintage: '', employer: '', dob: '', age: '', businessAddress: '',
+        years: [
+          { date: '31-Oct-25', turnover: 0, netIncome: 0, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 },
+          { date: '23-Oct-24', turnover: 0, netIncome: 0, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 },
+          { date: '14-Oct-23', turnover: 0, netIncome: 0, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 }
+        ]
+      });
+      render();
+    }
+
+    function fdResetPreset() {
+      location.reload();
+    }
+
+    function fdSave() {
+      localStorage.setItem('sf_fd_standalone', JSON.stringify(fdData));
+      alert('Financial Datasheet saved successfully!');
+    }
+
+    function fdExportExcel() {
+      const wb = XLSX.utils.book_new();
+
+      // 1. Business Details Sheet
+      const aoaBiz = [];
+      aoaBiz.push(['Business Details — Financial CAM Matrix']);
+      const r1 = ['']; fdData.entities.forEach(e => r1.push(e.role,'','')); r1.push('Consider Income','Average of 2yr'); aoaBiz.push(r1);
+      const r2 = ['Name']; fdData.entities.forEach(e => r2.push(e.name,'','')); r2.push('',''); aoaBiz.push(r2);
+      const r3 = ['DOJ / Vintage in Yrs']; fdData.entities.forEach(e => r3.push(e.doj||'',e.vintage||'','')); r3.push('',''); aoaBiz.push(r3);
+      const r4 = ['Business/Employer Name']; fdData.entities.forEach(e => r4.push(e.employer||'','','')); r4.push('',''); aoaBiz.push(r4);
+      const r5 = ['DOB / Age in yrs']; fdData.entities.forEach(e => r5.push(e.dob||'',e.age||'','')); r5.push('',''); aoaBiz.push(r5);
+      const r6 = ['ITR/Salary DATE']; fdData.entities.forEach(e => e.years.forEach(y => r6.push(y.date||''))); r6.push('Consider Income','Average of 2yr'); aoaBiz.push(r6);
+
+      ['turnover','netIncome','depreciation','interest','rent','addIncome','taxPaid'].forEach(key => {
+        const row = [key];
+        fdData.entities.forEach(e => e.years.forEach(y => row.push(y[key]||0)));
+        const tot = computeTotals(key);
+        row.push(tot.considerSum, tot.avg2yr);
+        aoaBiz.push(row);
+      });
+
+      const wsBiz = XLSX.utils.aoa_to_sheet(aoaBiz);
+      XLSX.utils.book_append_sheet(wb, wsBiz, 'Business Details');
+
+      // 2. Loan Details Sheet
+      const aoaLoans = [
+        ['Loan Details — Existing Loan Obligations & BT Matrix'],
+        ['Loan belongs to', 'Loan Provider', 'Type', 'Amount', 'Tenur', 'Loan/ EMI Start Date', 'EMI / Interest', 'No. of EMI Paid', 'Outstanding Amount', 'Over due charges', 'No. Bounce', 'Obligation', 'EMI obligation', 'BT', 'BT EMI', 'BT Amount', 'EMI Reflected in']
+      ];
+
+      (fdData.loans || []).forEach(l => {
+        const isObl = String(l.obligation || '').toLowerCase() === 'yes';
+        const isBt = String(l.bt || '').toLowerCase() === 'yes';
+        const emi = Number(l.emi) || 0;
+        const out = Number(l.outstanding) || 0;
+
+        aoaLoans.push([
+          l.loanBelongsTo || '', l.loanProvider || '', l.type || '', Number(l.amount) || 0,
+          l.tenure !== undefined ? l.tenure : '', l.startDate || '', emi, l.emiPaid !== undefined ? l.emiPaid : '',
+          out, l.overdueCharges !== undefined ? l.overdueCharges : '', l.bounceCount !== undefined ? l.bounceCount : '',
+          isObl ? 'yes' : 'No', isObl ? emi : 0, isBt ? 'yes' : 'No', isBt ? emi : 0, isBt ? out : 0,
+          l.emiReflectedIn || ''
+        ]);
+      });
+
+      const lt = computeLoanTotals();
+      aoaLoans.push([
+        'Total', '', '', lt.totAmount, lt.totTenure || '', '', lt.totEmi, lt.totEmiPaid || '',
+        lt.totOutstanding, lt.totOverdue || '', lt.totBounce || '', 'No', lt.totEmiObligation,
+        'No', lt.totBtEmi, lt.totBtAmount, ''
+      ]);
+
+      const wsLoans = XLSX.utils.aoa_to_sheet(aoaLoans);
+      XLSX.utils.book_append_sheet(wb, wsLoans, 'Loan Details');
+
+      XLSX.writeFile(wb, `Financial_Datasheet_Padiya_Group.xlsx`);
+    }
+
+    function fdImportExcel(evt) {
+      const file = evt.target.files && evt.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          const newEntities = [];
+          const newLoans = [];
+
+          // 1. Parse Business Details sheet
+          const bizSheetName = workbook.SheetNames.find(s => s.toLowerCase().includes('business') || s.toLowerCase().includes('cam') || s.toLowerCase().includes('financial')) || workbook.SheetNames[0];
+          const bizSheet = workbook.Sheets[bizSheetName];
+          if (bizSheet) {
+            const rows = XLSX.utils.sheet_to_json(bizSheet, { header: 1 });
+            if (rows && rows.length > 2) {
+              let roleRowIdx = -1, nameRowIdx = -1, dojRowIdx = -1, empRowIdx = -1, dobRowIdx = -1, addrRowIdx = -1, dateRowIdx = -1;
+              const keyRowIndices = {};
+
+              rows.forEach((r, idx) => {
+                if (!r || !r[0]) return;
+                const label = String(r[0]).trim().toLowerCase();
+                if (label.includes('financial parameter') || label.includes('role') || label.includes('business details')) roleRowIdx = idx;
+                if (label === 'name') nameRowIdx = idx;
+                if (label.includes('doj') || label.includes('vintage')) dojRowIdx = idx;
+                if (label.includes('business') && label.includes('employer')) empRowIdx = idx;
+                if (label.includes('dob') || label.includes('age')) dobRowIdx = idx;
+                if (label.includes('address')) addrRowIdx = idx;
+                if (label.includes('itr') || label.includes('salary date')) dateRowIdx = idx;
+
+                if (label.includes('turnover')) keyRowIndices['turnover'] = idx;
+                if (label.includes('net business') || label.includes('net income') || label.includes('salary income')) keyRowIndices['netIncome'] = idx;
+                if (label.includes('depreciation')) keyRowIndices['depreciation'] = idx;
+                if (label.includes('interest')) keyRowIndices['interest'] = idx;
+                if (label.includes('rent')) keyRowIndices['rent'] = idx;
+                if (label.includes('additional income') || label.includes('remuneration')) keyRowIndices['addIncome'] = idx;
+                if (label.includes('tax paid')) keyRowIndices['taxPaid'] = idx;
+              });
+
+              if (nameRowIdx !== -1) {
+                const nameRow = rows[nameRowIdx];
+                const roleRow = roleRowIdx !== -1 ? rows[roleRowIdx] : [];
+                const dojRow = dojRowIdx !== -1 ? rows[dojRowIdx] : [];
+                const empRow = empRowIdx !== -1 ? rows[empRowIdx] : [];
+                const dobRow = dobRowIdx !== -1 ? rows[dobRowIdx] : [];
+                const addrRow = addrRowIdx !== -1 ? rows[addrRowIdx] : [];
+                const dateRow = dateRowIdx !== -1 ? rows[dateRowIdx] : [];
+
+                for (let col = 1; col < nameRow.length; col += 3) {
+                  const nameVal = nameRow[col];
+                  if (!nameVal || String(nameVal).toLowerCase().includes('consider') || String(nameVal).toLowerCase().includes('average')) continue;
+
+                  const roleVal = (roleRow && roleRow[col]) ? String(roleRow[col]) : 'Applicant';
+                  const dojVal = (dojRow && dojRow[col]) ? String(dojRow[col]) : '';
+                  const vintageVal = (dojRow && dojRow[col+1]) ? String(dojRow[col+1]) : '';
+                  const empVal = (empRow && empRow[col]) ? String(empRow[col]) : '';
+                  const dobVal = (dobRow && dobRow[col]) ? String(dobRow[col]) : '';
+                  const ageVal = (dobRow && dobRow[col+1]) ? String(dobRow[col+1]) : '';
+                  const addrVal = (addrRow && addrRow[col]) ? String(addrRow[col]) : '';
+
+                  const y1Date = (dateRow && dateRow[col]) ? String(dateRow[col]) : '31-Oct-25';
+                  const y2Date = (dateRow && dateRow[col+1]) ? String(dateRow[col+1]) : '23-Oct-24';
+                  const y3Date = (dateRow && dateRow[col+2]) ? String(dateRow[col+2]) : '14-Oct-23';
+
+                  const getVal = (key, cOffset) => {
+                    const rIdx = keyRowIndices[key];
+                    if (rIdx !== undefined && rows[rIdx]) {
+                      const raw = rows[rIdx][col + cOffset];
+                      return Number(raw) || 0;
+                    }
+                    return 0;
+                  };
+
+                  newEntities.push({
+                    role: roleVal,
+                    name: String(nameVal),
+                    doj: dojVal,
+                    vintage: vintageVal,
+                    employer: empVal,
+                    dob: dobVal,
+                    age: ageVal,
+                    businessAddress: addrVal,
+                    years: [
+                      { date: y1Date, turnover: getVal('turnover', 0), netIncome: getVal('netIncome', 0), depreciation: getVal('depreciation', 0), interest: getVal('interest', 0), rent: getVal('rent', 0), addIncome: getVal('addIncome', 0), taxPaid: getVal('taxPaid', 0) },
+                      { date: y2Date, turnover: getVal('turnover', 1), netIncome: getVal('netIncome', 1), depreciation: getVal('depreciation', 1), interest: getVal('interest', 1), rent: getVal('rent', 1), addIncome: getVal('addIncome', 1), taxPaid: getVal('taxPaid', 1) },
+                      { date: y3Date, turnover: getVal('turnover', 2), netIncome: getVal('netIncome', 2), depreciation: getVal('depreciation', 2), interest: getVal('interest', 2), rent: getVal('rent', 2), addIncome: getVal('addIncome', 2), taxPaid: getVal('taxPaid', 2) }
+                    ]
+                  });
+                }
+              }
+            }
+          }
+
+          // 2. Parse Loan Details sheet
+          const loanSheetName = workbook.SheetNames.find(s => s.toLowerCase().includes('loan') || s.toLowerCase().includes('obligation') || s.toLowerCase().includes('bt'));
+          const loanSheet = loanSheetName ? workbook.Sheets[loanSheetName] : null;
+          if (loanSheet) {
+            const lRows = XLSX.utils.sheet_to_json(loanSheet, { header: 1 });
+            if (lRows && lRows.length > 1) {
+              let headerFound = false;
+              for (const r of lRows) {
+                if (!r || r.length === 0) continue;
+                const col0 = String(r[0] || '').trim();
+                if (col0.toLowerCase().includes('loan belows') || col0.toLowerCase().includes('loan belongs') || col0.toLowerCase().includes('borrower')) {
+                  headerFound = true;
+                  continue;
+                }
+                if (headerFound) {
+                  if (!col0 || col0.toLowerCase().includes('total') || col0.toLowerCase().includes('principle') || col0.toLowerCase().includes('plan') || col0.toLowerCase().includes('eligibility')) break;
+                  newLoans.push({
+                    loanBelongsTo: col0,
+                    loanProvider: r[1] || '',
+                    type: r[2] || '',
+                    amount: Number(r[3]) || '',
+                    tenure: r[4] !== undefined && typeof r[4] !== 'string' ? r[4] : (r[4] || ''),
+                    startDate: r[5] || '',
+                    emi: Number(r[4]) || Number(r[6]) || '',
+                    emiPaid: r[7] !== undefined ? r[7] : '',
+                    outstanding: Number(r[5]) || Number(r[8]) || '',
+                    overdueCharges: r[9] !== undefined ? r[9] : '',
+                    bounceCount: r[10] !== undefined ? r[10] : '',
+                    obligation: String(r[6] || r[11] || 'yes').toLowerCase() === 'yes' ? 'yes' : 'No',
+                    bt: String(r[8] || r[13] || 'no').toLowerCase() === 'yes' ? 'yes' : 'No',
+                    emiReflectedIn: r[16] || r[12] || ''
+                  });
+                }
+              }
+            }
+          }
+
+          if (newEntities.length > 0) fdData.entities = newEntities;
+          if (newLoans.length > 0) fdData.loans = newLoans;
+
+          render();
+          alert(`Successfully imported Excel sheet into Financial Datasheet! (${newEntities.length} entities, ${newLoans.length} loans parsed)`);
+        } catch (err) {
+          alert('Could not import Excel file: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    render();
+
+  </script>
+</body>
+</html>
