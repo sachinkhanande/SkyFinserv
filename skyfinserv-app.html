@@ -6904,8 +6904,13 @@
                         <td title="${row.employer || ''}">${row.employer || ''}</td>
                         <td>${row.category || ''}</td>
                         <td><strong>${row.bank || ''}</strong></td>
-                        <td>${row.rmName || ''}</td>
-                        <td>${row.product || ''}</td>
+                        <td>${(() => {
+                          let p = row.product || '';
+                          if (typeof p === 'string' && p.trim().startsWith('[')) {
+                            try { const a = JSON.parse(p); if (Array.isArray(a)) return a.join(', '); } catch {}
+                          }
+                          return Array.isArray(p) ? p.join(', ') : (p || '');
+                        })()}</td>
                         <td>${row.program || ''}</td>
                         <td>${row.creditProgram || ''}</td>
                         <td>${row.loginDate || ''}</td>

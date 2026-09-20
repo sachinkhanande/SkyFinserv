@@ -1,0 +1,84 @@
+{
+  "exportFolder": "Folder: skyfinserve001",
+  "sf_test_setting": "mysql_storage_verified",
+  "sf_loan_subcategories": {
+    "Business Loan": [
+      "Unsecured Business Loan",
+      "Working Capital Term Loan",
+      "Machinery / Equipment Purchase Loan",
+      "MSME / SME Business Loan",
+      "Letter of Credit / Bank Guarantee",
+      "Business Expansion Loan",
+      "Invoice Discounting"
+    ],
+    "Personal Loan": [
+      "Salaried Personal Loan",
+      "Self-Employed Personal Loan",
+      "Instant / Quick Cash Loan",
+      "Medical Emergency Loan",
+      "Debt Consolidation Loan",
+      "Wedding / Vacation Loan",
+      "Top-Up Personal Loan"
+    ],
+    "Loan Against Property": [
+      "Residential Property LAP",
+      "Commercial Property LAP",
+      "Industrial Property LAP",
+      "Lease Rental Discounting (LRD)",
+      "LAP Balance Transfer + Top-Up"
+    ],
+    "Home Loan": [
+      "Home Purchase Loan",
+      "Home Construction Loan",
+      "Plot or Land Loan",
+      "Home Improvement / Renovation Loan",
+      "Home Extension Loan",
+      "Balance Transfer Loan",
+      "Top-Up Loan"
+    ],
+    "Commercial Vehicle Loan": [
+      "Heavy Commercial Vehicle (HCV)",
+      "Light Commercial Vehicle (LCV)",
+      "Bus & Passenger Transport",
+      "Tipper & Construction Vehicle",
+      "Fleet Financing"
+    ],
+    "Auto Loan": [
+      "New Car Loan",
+      "Used / Pre-Owned Car Loan",
+      "Two-Wheeler Loan",
+      "Refinance / Top-Up Auto Loan"
+    ],
+    "Gold Loan": [
+      "Bullet Repayment Gold Loan",
+      "Monthly Interest / EMI Gold Loan",
+      "Overdraft Against Gold",
+      "Agricultural Gold Loan"
+    ],
+    "Project Loan": [
+      "Greenfield Project Loan",
+      "Brownfield Expansion Loan",
+      "Infrastructure Project Finance",
+      "Commercial Real Estate Project"
+    ],
+    "DropLine Over Draft": [
+      "Business DLOD",
+      "Property-Backed DLOD",
+      "Professional DLOD"
+    ],
+    "Cash Credit / Working Credit": [
+      "Cash Credit (CC) Facility",
+      "Working Capital Demand Loan (WCDL)",
+      "Export Packing Credit (EPC)",
+      "Overdraft (OD) Facility"
+    ],
+    "Education Loan": [
+      "Domestic Higher Education Loan",
+      "Overseas / Foreign Studies Loan",
+      "Vocational & Skill Development Course Loan",
+      "Executive MBA / Certificate Program Loan"
+    ],
+    "Govt. Loan MSME": [],
+    "Medical Equipment Loan": []
+  }
+}

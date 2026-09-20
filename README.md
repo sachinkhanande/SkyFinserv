@@ -210,13 +210,13 @@ node server.js
 ✅ Database "skyfinserv" ready — all tables OK
 ✅ Seeded default admin — username: admin | password: admin123
 ✅ Loan type subcategories seeded
-🚀 SkyFinserv running at http://localhost:3000
+🚀 SkyFinserv running at http://172.17.80.1:3000
    Admin login: username=admin  password=admin123
 ```
 
 ### Open in Browser
 ```
-http://localhost:3000
+http://172.17.80.1:3000
 ```
 
 ### Default Admin Login
