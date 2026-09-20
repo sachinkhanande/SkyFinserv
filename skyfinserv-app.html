@@ -4201,8 +4201,34 @@
               ${ALL_LOAN_PRODUCTS.map(p => `<option ${(F.loanProducts || [])[0] === p ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
           </div>
-          <div class="spf-field"><label class="spf-label">Requested Amount (₹)</label><input class="spf-input" type="number" data-f="requestedAmount" value="${F.requestedAmount || ''}" placeholder="e.g. 2500000"/></div>
-          <div class="spf-field"><label class="spf-label">Tenure (Months)</label><input class="spf-input" type="number" data-f="tenureMonths" value="${F.tenureMonths || ''}" placeholder="e.g. 240"/></div>
+          <div class="spf-field"><label class="spf-label">Requested Amount (₹) *</label><input class="spf-input" type="number" data-f="requestedAmount" value="${F.requestedAmount || ''}" placeholder="e.g. 2500000"/></div>
+          <div class="spf-field">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <label class="spf-label" style="margin:0;">Tenure (Months) *</label>
+              <span style="font-size:11px;color:#0d9488;font-weight:600;display:flex;align-items:center;gap:4px;">
+                <span>⏱️ Quick Calc:</span>
+                <input type="number" min="1" max="40" placeholder="Yrs" style="width:48px;padding:2px 4px;font-size:11px;border:1px solid #cbd5e1;border-radius:4px;text-align:center;" oninput="if(this.value){ const m = Math.round(Number(this.value)*12); state.form.tenureMonths = m; const inp = document.querySelector('[data-f=tenureMonths]'); if(inp) inp.value = m; const prev = document.getElementById('tenure-calc-preview'); if(prev) prev.innerText = this.value + ' Yrs (' + m + 'm)'; }"/>
+                <span id="tenure-calc-preview" style="color:#0f766e;">${F.tenureMonths ? (Math.round(Number(F.tenureMonths)/12*10)/10) + ' Yrs' : ''}</span>
+              </span>
+            </div>
+            <input class="spf-input" type="number" data-f="tenureMonths" value="${F.tenureMonths || ''}" placeholder="e.g. 60 for 5 Years" oninput="const y = Math.round(Number(this.value)/12*10)/10; const prev = document.getElementById('tenure-calc-preview'); if(prev) prev.innerText = this.value ? y + ' Yrs' : '';"/>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+              ${[
+                { y: 1, m: 12 },
+                { y: 2, m: 24 },
+                { y: 3, m: 36 },
+                { y: 5, m: 60 },
+                { y: 7, m: 84 },
+                { y: 10, m: 120 },
+                { y: 15, m: 180 },
+                { y: 20, m: 240 }
+              ].map(t => `
+                <button type="button" style="font-size:10px;padding:2px 8px;background:${Number(F.tenureMonths) === t.m ? '#0d9488' : '#f1f5f9'};color:${Number(F.tenureMonths) === t.m ? '#fff' : '#334155'};border:1px solid ${Number(F.tenureMonths) === t.m ? '#0d9488' : '#cbd5e1'};border-radius:12px;cursor:pointer;font-weight:600;" onclick="state.form.tenureMonths = ${t.m}; const inp = document.querySelector('[data-f=tenureMonths]'); if(inp) inp.value = ${t.m}; const prev = document.getElementById('tenure-calc-preview'); if(prev) prev.innerText = '${t.y} Yrs (${t.m}m)'; render();">
+                  ${t.y}Y (${t.m}m)
+                </button>
+              `).join('')}
+            </div>
+          </div>
           <div class="spf-field"><label class="spf-label">Loan Purpose</label><input class="spf-input" data-f="loanPurpose" value="${F.loanPurpose || ''}" placeholder="e.g. Home purchase / Business expansion"/></div>
         </div>
       </div>
