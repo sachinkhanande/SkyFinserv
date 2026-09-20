@@ -3875,25 +3875,6 @@
             </div>
           </div>
 
-          <!-- Card 3: Financial Datasheet (CAM) -->
-          <div class="portal-module-card" data-nav="financial-datasheet">
-            <div>
-              <div class="portal-card-head">
-                <div class="portal-card-icon-wrap" style="background:#e0f7f4;color:#00897b;">
-                  📈
-                </div>
-                <span class="portal-card-badge" style="background:#e0f7f4;color:#00897b;">Module 03</span>
-              </div>
-              <div class="portal-card-title">Financial Datasheet (CAM)</div>
-              <div class="portal-card-desc">
-                Comprehensive Credit Appraisal Memo & Financial Analysis tool. Multi-year balance sheet & P&L statements, financial ratio analysis (DSCR, D/E, Profitability), and complete bank obligation calculations.
-              </div>
-            </div>
-            <div class="portal-card-footer">
-              <button class="btn btn-success portal-card-btn" data-nav="financial-datasheet">Open Financial Datasheet →</button>
-            </div>
-          </div>
-
           ${!isUser ? `
           <!-- Card 4: Admin Console (Admin Only) -->
           <div class="portal-module-card" data-nav="admin">
@@ -4004,7 +3985,6 @@
       <button class="nav-tab ${state.view === 'portal-dashboard' || !state.view ? 'active' : ''}" data-nav="portal-dashboard">🏠 Home</button>
       <button class="nav-tab ${state.view === 'public' ? 'active' : ''}" data-nav="public">Apply Loan</button>
       <button class="nav-tab ${state.view === 'datamanager' ? 'active' : ''}" data-nav="datamanager">📊 Data Manager</button>
-      <button class="nav-tab ${state.view === 'financial-datasheet' ? 'active' : ''}" data-nav="financial-datasheet">📈 Financial Datasheet (CAM)</button>
       <span style="font-size:13.5px;color:rgba(255,255,255,0.9);font-weight:600;background:rgba(255,255,255,0.1);padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);margin-left:12px;">👤 ${state.admin.displayName || state.admin.username}</span>
       <button class="nav-tab" data-action="logout" style="background:rgba(225,29,72,0.15);color:#fda4af;border-color:rgba(225,29,72,0.3);margin-left:8px;">Sign Out 🚪</button>
     </div>
@@ -4024,7 +4004,6 @@
       <button class="nav-tab ${state.view === 'portal-dashboard' || !state.view ? 'active' : ''}" data-nav="portal-dashboard">🏠 Home</button>
       <button class="nav-tab ${state.view === 'public' ? 'active' : ''}" data-nav="public">Apply Loan</button>
       <button class="nav-tab ${state.view === 'datamanager' ? 'active' : ''}" data-nav="datamanager">📊 Data Manager</button>
-      <button class="nav-tab ${state.view === 'financial-datasheet' ? 'active' : ''}" data-nav="financial-datasheet">📈 Financial Datasheet (CAM)</button>
       <button class="nav-tab ${state.view && state.view.startsWith('admin') ? 'active' : ''}" data-nav="admin">🛡️ Admin Console</button>
       <button class="nav-tab" data-action="logout" style="background:rgba(225,29,72,0.15);color:#fda4af;border-color:rgba(225,29,72,0.3);margin-left:12px;">Sign Out 🚪</button>
     </div>
