@@ -850,8 +850,22 @@
       opacity: 0.35;
       pointer-events: none;
     }
-    .login-orb-1 { width: 450px; height: 450px; background: var(--gold); top: -100px; left: -100px; }
-    .login-orb-2 { width: 400px; height: 400px; background: #3b82f6; bottom: -100px; right: -100px; }
+
+    .login-orb-1 {
+      width: 450px;
+      height: 450px;
+      background: var(--gold);
+      top: -100px;
+      left: -100px;
+    }
+
+    .login-orb-2 {
+      width: 400px;
+      height: 400px;
+      background: #3b82f6;
+      bottom: -100px;
+      right: -100px;
+    }
 
     .login-shell {
       width: 100%;
@@ -870,8 +884,15 @@
     }
 
     @keyframes loginCardIn {
-      from { opacity: 0; transform: translateY(24px) scale(0.97); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
+      from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.97);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
     }
 
     .login-shell h2 {
@@ -1133,9 +1154,20 @@
     }
 
     @keyframes pulseDot {
-      0% { opacity: 0.4; transform: scale(0.9); }
-      50% { opacity: 1; transform: scale(1.15); }
-      100% { opacity: 0.4; transform: scale(0.9); }
+      0% {
+        opacity: 0.4;
+        transform: scale(0.9);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.15);
+      }
+
+      100% {
+        opacity: 0.4;
+        transform: scale(0.9);
+      }
     }
 
     .paum-grid {
@@ -1162,10 +1194,21 @@
       box-shadow: var(--shadow-md);
     }
 
-    .paum-metric-box.primary { border-top: 3.5px solid var(--blue); }
-    .paum-metric-box.success { border-top: 3.5px solid var(--teal); }
-    .paum-metric-box.teal { border-top: 3.5px solid #00897B; }
-    .paum-metric-box.warning { border-top: 3.5px solid var(--gold); }
+    .paum-metric-box.primary {
+      border-top: 3.5px solid var(--blue);
+    }
+
+    .paum-metric-box.success {
+      border-top: 3.5px solid var(--teal);
+    }
+
+    .paum-metric-box.teal {
+      border-top: 3.5px solid #00897B;
+    }
+
+    .paum-metric-box.warning {
+      border-top: 3.5px solid var(--gold);
+    }
 
     .paum-metric-box .paum-icon {
       font-size: 20px;
@@ -1203,10 +1246,13 @@
     }
 
     @media (max-width: 860px) {
-      .paum-risk-row { grid-template-columns: 1fr; }
+      .paum-risk-row {
+        grid-template-columns: 1fr;
+      }
     }
 
-    .paum-risk-card, .paum-product-card {
+    .paum-risk-card,
+    .paum-product-card {
       background: var(--white);
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -1241,9 +1287,17 @@
       margin-bottom: 14px;
     }
 
-    .paum-bar.low { background: var(--teal); }
-    .paum-bar.med { background: var(--gold); }
-    .paum-bar.high { background: var(--rose); }
+    .paum-bar.low {
+      background: var(--teal);
+    }
+
+    .paum-bar.med {
+      background: var(--gold);
+    }
+
+    .paum-bar.high {
+      background: var(--rose);
+    }
 
     .paum-risk-legend {
       display: flex;
@@ -1266,11 +1320,28 @@
       margin-right: 6px;
     }
 
-    .risk-dot.low { background: var(--teal); }
-    .risk-dot.med { background: var(--gold); }
-    .risk-dot.high { background: var(--rose); }
-    .risk-name { color: var(--slate); font-weight: 500; }
-    .risk-val { font-family: var(--font-mono); font-weight: 700; color: var(--ink); }
+    .risk-dot.low {
+      background: var(--teal);
+    }
+
+    .risk-dot.med {
+      background: var(--gold);
+    }
+
+    .risk-dot.high {
+      background: var(--rose);
+    }
+
+    .risk-name {
+      color: var(--slate);
+      font-weight: 500;
+    }
+
+    .risk-val {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--ink);
+    }
 
     .paum-product-list {
       display: flex;
@@ -1290,8 +1361,16 @@
       font-size: 12px;
     }
 
-    .prod-name { font-weight: 600; color: var(--slate); }
-    .prod-amount { font-family: var(--font-mono); font-weight: 600; color: var(--ink); }
+    .prod-name {
+      font-weight: 600;
+      color: var(--slate);
+    }
+
+    .prod-amount {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--ink);
+    }
 
     .prod-track {
       height: 6px;
@@ -1300,7 +1379,10 @@
       overflow: hidden;
     }
 
-    .prod-fill { height: 100%; border-radius: 3px; }
+    .prod-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
 
     .stat-chip {
       background: var(--white);
@@ -4208,21 +4290,21 @@
               <span style="font-size:11px;color:#0d9488;font-weight:600;display:flex;align-items:center;gap:4px;">
                 <span>⏱️ Quick Calc:</span>
                 <input type="number" min="1" max="40" placeholder="Yrs" style="width:48px;padding:2px 4px;font-size:11px;border:1px solid #cbd5e1;border-radius:4px;text-align:center;" oninput="if(this.value){ const m = Math.round(Number(this.value)*12); state.form.tenureMonths = m; const inp = document.querySelector('[data-f=tenureMonths]'); if(inp) inp.value = m; const prev = document.getElementById('tenure-calc-preview'); if(prev) prev.innerText = this.value + ' Yrs (' + m + 'm)'; }"/>
-                <span id="tenure-calc-preview" style="color:#0f766e;">${F.tenureMonths ? (Math.round(Number(F.tenureMonths)/12*10)/10) + ' Yrs' : ''}</span>
+                <span id="tenure-calc-preview" style="color:#0f766e;">${F.tenureMonths ? (Math.round(Number(F.tenureMonths) / 12 * 10) / 10) + ' Yrs' : ''}</span>
               </span>
             </div>
             <input class="spf-input" type="number" data-f="tenureMonths" value="${F.tenureMonths || ''}" placeholder="e.g. 60 for 5 Years" oninput="const y = Math.round(Number(this.value)/12*10)/10; const prev = document.getElementById('tenure-calc-preview'); if(prev) prev.innerText = this.value ? y + ' Yrs' : '';"/>
             <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
               ${[
-                { y: 1, m: 12 },
-                { y: 2, m: 24 },
-                { y: 3, m: 36 },
-                { y: 5, m: 60 },
-                { y: 7, m: 84 },
-                { y: 10, m: 120 },
-                { y: 15, m: 180 },
-                { y: 20, m: 240 }
-              ].map(t => `
+          { y: 1, m: 12 },
+          { y: 2, m: 24 },
+          { y: 3, m: 36 },
+          { y: 5, m: 60 },
+          { y: 7, m: 84 },
+          { y: 10, m: 120 },
+          { y: 15, m: 180 },
+          { y: 20, m: 240 }
+        ].map(t => `
                 <button type="button" style="font-size:10px;padding:2px 8px;background:${Number(F.tenureMonths) === t.m ? '#0d9488' : '#f1f5f9'};color:${Number(F.tenureMonths) === t.m ? '#fff' : '#334155'};border:1px solid ${Number(F.tenureMonths) === t.m ? '#0d9488' : '#cbd5e1'};border-radius:12px;cursor:pointer;font-weight:600;" onclick="state.form.tenureMonths = ${t.m}; const inp = document.querySelector('[data-f=tenureMonths]'); if(inp) inp.value = ${t.m}; const prev = document.getElementById('tenure-calc-preview'); if(prev) prev.innerText = '${t.y} Yrs (${t.m}m)'; render();">
                   ${t.y}Y (${t.m}m)
                 </button>
@@ -6910,12 +6992,12 @@
                         <td>${row.category || ''}</td>
                         <td><strong>${row.bank || ''}</strong></td>
                         <td>${(() => {
-                          let p = row.product || '';
-                          if (typeof p === 'string' && p.trim().startsWith('[')) {
-                            try { const a = JSON.parse(p); if (Array.isArray(a)) return a.join(', '); } catch {}
-                          }
-                          return Array.isArray(p) ? p.join(', ') : (p || '');
-                        })()}</td>
+                let p = row.product || '';
+                if (typeof p === 'string' && p.trim().startsWith('[')) {
+                  try { const a = JSON.parse(p); if (Array.isArray(a)) return a.join(', '); } catch { }
+                }
+                return Array.isArray(p) ? p.join(', ') : (p || '');
+              })()}</td>
                         <td>${row.program || ''}</td>
                         <td>${row.creditProgram || ''}</td>
                         <td>${row.loginDate || ''}</td>
