@@ -1,7 +1,8 @@
 {
   "name": "skyfinserv",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "SkyFinserv Loan Application Portal",
+  "author": "SkyFinserv",
   "main": "main.js",
   "scripts": {
     "start": "node server.js",
@@ -35,6 +36,11 @@
       "main.js",
       "preload.js",
       "skyfinserv-app.html",
+      "financial-datasheet.html",
+      "app_settings.json",
+      "schema.sql",
+      "lib/**/*",
+      "data/**/*",
       ".env",
       "package.json",
       "node_modules/**/*"
@@ -46,21 +52,17 @@
           "arch": [
             "x64"
           ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
         }
       ]
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "SkyFinserv"
+      "shortcutName": "SkyFinserv",
+      "uninstallDisplayName": "SkyFinserv Loan Application Portal"
     }
   }
 }

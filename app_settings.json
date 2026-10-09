@@ -1,5 +1,10 @@
 {
-  "exportFolder": "Folder: skyfinserve001",
+  "db_host": "localhost",
+  "db_port": 3306,
+  "db_user": "root",
+  "db_password": "root",
+  "db_name": "skyfinserv",
+  "exportFolder": "D:\\\\SkyfinservCam",
   "sf_test_setting": "mysql_storage_verified",
   "sf_loan_subcategories": {
     "Business Loan": [

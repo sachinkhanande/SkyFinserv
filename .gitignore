@@ -25,3 +25,6 @@ yarn-error.log*
 Thumbs.db
 *.tmp
 .gemini/
+
+# Live data files
+data/*.xlsx

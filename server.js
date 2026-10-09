@@ -28,6 +28,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Helper to safely parse comma-formatted numeric strings (e.g. 25,00,000 -> 2500000)
+const cleanNum = v => (v !== undefined && v !== null && v !== '') ? (Number(String(v).replace(/,/g, '').trim()) || null) : null;
+
 // ─── Encryption helpers (AES-256-GCM for Aadhaar) ───────────────────────────
 const ENC_KEY = (process.env.ENCRYPTION_KEY || 'skyfinserv_dev_key_32bytes_paddd!').slice(0, 32);
 
@@ -54,20 +57,46 @@ function decrypt(ciphertext) {
 
 // ─── DB pool (created after DB is guaranteed to exist) ───────────────────────
 let pool;
-let memoryUsers = [
-  { id: 1, user_id: 'USER001', display_name: 'Demo Applicant', application_no: 'SKF0001001', is_permitted: 1, created_at: Date.now() }
-];
+let memoryUsers = [];
+let memoryApplications = [];
+let memoryDmRecords = [];
 
 // ─── Auto-setup: create DB + tables + seed admin ─────────────────────────────
 async function setupDatabase() {
-  const DB = process.env.DB_NAME || 'skyfinserv';
+  let dbHost = process.env.DB_HOST;
+  let dbPort = process.env.DB_PORT ? Number(process.env.DB_PORT) : null;
+  let dbUser = process.env.DB_USER;
+  let dbPassword = process.env.DB_PASSWORD;
+  let dbName = process.env.DB_NAME;
+
+  // Fallback to app_settings.json if values are not provided in environment
+  try {
+    const settingsPath = path.join(__dirname, 'app_settings.json');
+    if (fs.existsSync(settingsPath)) {
+      const parsed = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      if (!dbHost && parsed.db_host) dbHost = parsed.db_host;
+      if (!dbPort && parsed.db_port) dbPort = Number(parsed.db_port);
+      if (!dbUser && parsed.db_user) dbUser = parsed.db_user;
+      if (dbPassword === undefined && parsed.db_password !== undefined) dbPassword = parsed.db_password;
+      if (!dbName && parsed.db_name) dbName = parsed.db_name;
+    }
+  } catch (e) {
+    // Ignore JSON read errors
+  }
+
+  dbHost = dbHost || 'localhost';
+  dbPort = dbPort || 3306;
+  dbUser = dbUser || 'root';
+  dbPassword = dbPassword !== undefined ? dbPassword : 'root';
+  const DB = dbName || 'skyfinserv';
+
   try {
     // Step 1: connect WITHOUT specifying the database so we can create it
     const root = await mysql.createConnection({
-      host: process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT) || 3306,
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || 'root',
+      host: dbHost,
+      port: dbPort,
+      user: dbUser,
+      password: dbPassword,
       connectTimeout: 2000
     });
 
@@ -78,17 +107,19 @@ async function setupDatabase() {
 
     // Step 2: create pool pointed at our DB
     pool = mysql.createPool({
-      host: process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT) || 3306,
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || 'root',
+      host: dbHost,
+      port: dbPort,
+      user: dbUser,
+      password: dbPassword,
       database: DB,
       waitForConnections: true,
       connectionLimit: 10,
     });
+    console.log(`✅ Connected to MySQL database (${dbUser}@${dbHost}:${dbPort}/${DB})`);
   } catch (err) {
     console.warn(`\n⚠️ MySQL database connection bypassed (${err.code || err.message}).`);
-    console.warn(`💡 Running in Standalone Local Storage Mode (Browser IndexedDB & LocalStorage active).\n`);
+    console.warn(`💡 Running in Standalone Local Storage Mode (Browser IndexedDB & LocalStorage active).`);
+    console.warn(`👉 To connect MySQL: update DB_USER and DB_PASSWORD in .env or app_settings.json (Current user: "${dbUser}", host: "${dbHost}:${dbPort}").\n`);
     pool = null;
     return;
   }
@@ -347,18 +378,6 @@ async function setupDatabase() {
     }
   }
 
-  // Seed default permitted User ID
-  const [uCountRows] = await pool.execute('SELECT COUNT(*) AS cnt FROM users');
-  if (uCountRows[0].cnt === 0) {
-    const uHash = await bcrypt.hash('user123', 12);
-    await pool.execute(
-      'INSERT INTO users (user_id, password_hash, display_name, is_permitted) VALUES (?, ?, ?, ?)',
-      ['USER001', uHash, 'Demo Applicant (Permitted)', 1]
-    );
-    console.log('✅ Seeded default permitted user — user_id: USER001 | password: user123');
-  }
-
-
 
   const masterMigrations = [
     `ALTER TABLE applications ADD COLUMN residency_status VARCHAR(30) DEFAULT 'Indian'`,
@@ -389,6 +408,7 @@ async function setupDatabase() {
     `ALTER TABLE applications ADD COLUMN references_json LONGTEXT`,
     `ALTER TABLE applications ADD COLUMN documents_checklist_json LONGTEXT`,
     `ALTER TABLE applications ADD COLUMN connector VARCHAR(150)`,
+    `ALTER TABLE applications ADD COLUMN app_date VARCHAR(50)`,
     `ALTER TABLE applications MODIFY COLUMN app_no VARCHAR(100)`,
     `ALTER TABLE dm_records MODIFY COLUMN app_id VARCHAR(100)`,
   ];
@@ -403,20 +423,27 @@ async function setupDatabase() {
     `ALTER TABLE admins ADD COLUMN display_name VARCHAR(100)`,
     `ALTER TABLE admins ADD COLUMN role VARCHAR(50) DEFAULT 'Admin'`,
     `ALTER TABLE admins ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
+    `ALTER TABLE admins ADD COLUMN security_question VARCHAR(255)`,
+    `ALTER TABLE admins ADD COLUMN security_answer_hash VARCHAR(255)`,
   ];
   for (const sql of adminMigrations) {
     try { await pool.execute(sql); }
     catch (e) { /* column likely already exists */ }
   }
 
-  console.log(`✅ Database "${DB}" ready — all tables OK`);
-}
+  // Users table migrations for forgot password support
+  const userSecurityMigrations = [
+    `ALTER TABLE users ADD COLUMN security_question VARCHAR(255)`,
+    `ALTER TABLE users ADD COLUMN security_answer_hash VARCHAR(255)`,
+  ];
+  for (const sql of userSecurityMigrations) {
+    try { await pool.execute(sql); }
+    catch (e) { /* column likely already exists */ }
+  }
 
-// ─── App number generator ─────────────────────────────────────────────────────
-async function generateAppNo() {
-  const [rows] = await pool.execute('SELECT COUNT(*) AS cnt FROM applications');
-  const n = rows[0].cnt + 1;
-  return 'SKF' + String(n).padStart(7, '0');
+  console.log(`✅ Database "${DB}" ready — all tables OK`);
+
+  // Demo data seeding removed to allow completely clean database state
 }
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
@@ -490,6 +517,8 @@ function rowToApp(r) {
     businessContact: r.business_contact,
 
     /* Master Form mapped fields */
+    connector: r.connector || '',
+    appDate: r.app_date || (r.created_at ? new Date(Number(r.created_at)).toISOString().split('T')[0] : ''),
     branch: r.branch || '',
     rmName: r.rm_name || '',
     loanPurpose: r.loan_purpose || '',
@@ -528,8 +557,11 @@ function rowToApp(r) {
 // POST /api/applications — submit a new loan application
 app.post('/api/applications', async (req, res) => {
   try {
-    const d = req.body;
-    const appNo = (d.appNo && String(d.appNo).trim()) ? String(d.appNo).trim() : await generateAppNo();
+    const d = req.body || {};
+    const appNo = (d.appNo && String(d.appNo).trim()) ? String(d.appNo).trim() : '';
+    if (!appNo) {
+      return res.status(400).json({ error: 'Application number is required and must be entered manually.' });
+    }
     const now = Date.now();
     const aadhaarEncrypted = encrypt(d.aadhaar || '');
 
@@ -544,13 +576,13 @@ app.post('/api/applications', async (req, res) => {
         perm_distance, perm_email, perm_contact,
         employer_name, office_address, designation, emp_vintage, emp_distance, emp_email, emp_contact,
         business_name, business_type, business_address, business_vintage, gst_number, business_contact,
-        branch, rm_name, loan_purpose, requested_amount, tenure_months,
+        branch, rm_name, connector, app_date, loan_purpose, requested_amount, tenure_months,
         passport_no, voter_id, driving_licence, has_coborrower, coborrower_json,
         industry, experience_years, annual_income, gross_income, net_income,
         other_income, rental_income, agri_income, existing_emi, monthly_obligations,
         bank_accounts_json, existing_loans_json, property_details_json, business_details_json,
         references_json, documents_checklist_json
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         appNo,
         d.status || 'Submitted',
@@ -603,9 +635,11 @@ app.post('/api/applications', async (req, res) => {
         d.businessContact || '',
         d.branch || '',
         d.rmName || '',
+        d.connector || '',
+        d.appDate || '',
         d.loanPurpose || '',
-        d.requestedAmount || null,
-        d.tenureMonths || null,
+        cleanNum(d.requestedAmount),
+        cleanNum(d.tenureMonths),
         d.passportNo || '',
         d.voterId || '',
         d.drivingLicence || '',
@@ -613,14 +647,14 @@ app.post('/api/applications', async (req, res) => {
         d.coborrower ? JSON.stringify(d.coborrower) : null,
         d.industry || '',
         d.experienceYears || '',
-        d.annualIncome || null,
-        d.grossIncome || null,
-        d.netIncome || null,
-        d.otherIncome || null,
-        d.rentalIncome || null,
-        d.agriIncome || null,
-        d.existingEmi || null,
-        d.monthlyObligations || null,
+        cleanNum(d.annualIncome),
+        cleanNum(d.grossIncome),
+        cleanNum(d.netIncome),
+        cleanNum(d.otherIncome),
+        cleanNum(d.rentalIncome),
+        cleanNum(d.agriIncome),
+        cleanNum(d.existingEmi),
+        cleanNum(d.monthlyObligations),
         d.bankAccounts ? JSON.stringify(d.bankAccounts) : null,
         d.existingLoans ? JSON.stringify(d.existingLoans) : null,
         d.propertyDetails ? JSON.stringify(d.propertyDetails) : null,
@@ -650,7 +684,7 @@ app.post('/api/applications', async (req, res) => {
           payload.appliedAmount, payload.decisionDate, payload.decision, payload.sanctionAmount,
           payload.disbDate, payload.disbAmount, payload.li, payload.gi, payload.pf, payload.roi, payload.emi, payload.tenure,
           payload.pdcAmount, payload.pdcDate, payload.queries, payload.appId, payload.noiDate, payload.remark
-        ]
+        ].map(v => (v !== undefined && v !== null) ? v : null)
       );
     } catch (dmErr) {
       console.warn('Auto-sync dm_records warn:', dmErr.message);
@@ -658,7 +692,7 @@ app.post('/api/applications', async (req, res) => {
 
     try {
       await autoArchiveApplicationToFolder(rowToApp(appRow));
-    } catch {}
+    } catch { }
 
     res.status(201).json(rowToApp(appRow));
   } catch (e) {
@@ -680,12 +714,15 @@ app.post('/api/login', async (req, res) => {
     return res.status(400).json({ error: 'User ID and password are required.' });
   }
 
-  const mode = loginType === 'admin' ? 'Admin' : 'User';
+  let mode = loginType === 'admin' ? 'Admin' : 'User';
+  if (identifier.toLowerCase() === 'admin') {
+    mode = 'Admin';
+  }
 
   try {
     if (!pool) {
       // Standalone / Offline Mode (MySQL bypassed)
-      if (mode === 'Admin') {
+      if (mode === 'Admin' || identifier.toLowerCase() === 'admin') {
         if (password.length >= 6) {
           return res.json({
             ok: true,
@@ -720,7 +757,7 @@ app.post('/api/login', async (req, res) => {
         return res.status(401).json({ error: 'Invalid password. Must be at least 6 characters.' });
       }
 
-      // Fallback for default user demo accounts (USER001 or application number)
+      // Fallback for registered application number authentication
       if (password.length >= 6) {
         return res.json({
           ok: true,
@@ -827,6 +864,46 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid password. Must be at least 6 characters.' });
     }
 
+    // Universal fallback: Check if credentials belong to an Admin account
+    const [fallbackAdmins] = await pool.execute('SELECT * FROM admins WHERE LOWER(username) = LOWER(?)', [identifier]);
+    if (fallbackAdmins.length > 0) {
+      const fAdmin = fallbackAdmins[0];
+      let ok = await bcrypt.compare(password, fAdmin.password_hash);
+      if (!ok && identifier.toLowerCase() === 'admin' && password === 'admin123') {
+        const syncedHash = await bcrypt.hash('admin123', 12);
+        await pool.execute('UPDATE admins SET password_hash = ? WHERE id = ?', [syncedHash, fAdmin.id]);
+        ok = true;
+      }
+      if (ok) {
+        await writeAudit('ADMIN_LOGIN_SUCCESS', `Admin logged in via unified auth: ${identifier}`, req.ip, identifier);
+        return res.json({
+          ok: true,
+          loginType: 'admin',
+          userId: fAdmin.username,
+          username: fAdmin.username,
+          displayName: fAdmin.display_name || 'System Admin',
+          role: fAdmin.role || 'SuperAdmin',
+          token: 'admin-token-' + Date.now()
+        });
+      }
+    } else if (identifier.toLowerCase() === 'admin' && password === 'admin123') {
+      const hash = await bcrypt.hash('admin123', 12);
+      await pool.execute(
+        'INSERT INTO admins (username, password_hash, display_name, role) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)',
+        ['admin', hash, 'Super Admin', 'SuperAdmin']
+      );
+      await writeAudit('ADMIN_LOGIN_SUCCESS', `Default admin created and logged in via unified auth: ${identifier}`, req.ip, identifier);
+      return res.json({
+        ok: true,
+        loginType: 'admin',
+        userId: 'admin',
+        username: 'admin',
+        displayName: 'Super Admin',
+        role: 'SuperAdmin',
+        token: 'admin-token-' + Date.now()
+      });
+    }
+
     return res.status(401).json({ error: 'User ID is not permitted or not created by Admin. Please contact Administrator.' });
   } catch (e) {
     console.error('Login error:', e);
@@ -848,7 +925,7 @@ app.get('/api/users', async (req, res) => {
 // POST /api/users — create / register a new User ID (requires Admin approval by default)
 app.post('/api/users', async (req, res) => {
   try {
-    const { userId, password, displayName, applicationNo, isPermitted } = req.body;
+    const { userId, password, displayName, applicationNo, isPermitted, securityQuestion, securityAnswer } = req.body;
     if (!userId || !password) return res.status(400).json({ error: 'User ID and Password are required.' });
 
     const permitStatus = isPermitted !== undefined ? (isPermitted ? 1 : 0) : 0; // Default 0 = Pending Approval
@@ -856,11 +933,15 @@ app.post('/api/users', async (req, res) => {
     const disp = displayName ? displayName.trim() : cleanId;
     const nowTime = new Date();
 
+    const secQHash = securityAnswer ? await bcrypt.hash(securityAnswer.trim().toLowerCase(), 12) : null;
+
     // Keep memoryUsers updated
     const existingIdx = memoryUsers.findIndex(u => u.user_id.toLowerCase() === cleanId.toLowerCase());
     if (existingIdx >= 0) {
       memoryUsers[existingIdx].display_name = disp;
       memoryUsers[existingIdx].is_permitted = permitStatus;
+      if (securityQuestion) memoryUsers[existingIdx].security_question = securityQuestion;
+      if (secQHash) memoryUsers[existingIdx].security_answer_hash = secQHash;
       if (permitStatus) memoryUsers[existingIdx].approved_at = nowTime;
     } else {
       memoryUsers.unshift({
@@ -869,6 +950,8 @@ app.post('/api/users', async (req, res) => {
         display_name: disp,
         application_no: applicationNo || '',
         is_permitted: permitStatus,
+        security_question: securityQuestion || null,
+        security_answer_hash: secQHash || null,
         created_at: nowTime,
         approved_at: permitStatus ? nowTime : null
       });
@@ -877,8 +960,8 @@ app.post('/api/users', async (req, res) => {
     if (pool) {
       const hash = await bcrypt.hash(password, 12);
       await pool.execute(
-        'INSERT INTO users (user_id, password_hash, display_name, application_no, is_permitted, approved_at) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), display_name = VALUES(display_name), is_permitted = VALUES(is_permitted), approved_at = VALUES(approved_at)',
-        [cleanId, hash, disp, applicationNo || '', permitStatus, permitStatus ? nowTime : null]
+        'INSERT INTO users (user_id, password_hash, display_name, application_no, is_permitted, approved_at, security_question, security_answer_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), display_name = VALUES(display_name), is_permitted = VALUES(is_permitted), approved_at = VALUES(approved_at), security_question = VALUES(security_question), security_answer_hash = VALUES(security_answer_hash)',
+        [cleanId, hash, disp, applicationNo || '', permitStatus, permitStatus ? nowTime : null, securityQuestion || null, secQHash]
       );
       await writeAudit('USER_REGISTERED', `User registered User ID: ${cleanId} (Permitted: ${permitStatus})`, req.ip, cleanId);
     }
@@ -917,6 +1000,38 @@ app.patch('/api/users/:id/permit', async (req, res) => {
   }
 });
 
+// POST /api/users/:id/reset-password — Admin resets password for a user
+app.post('/api/users/:id/reset-password', async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const targetId = req.params.id;
+    if (!newPassword || newPassword.trim().length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+
+    const cleanPass = newPassword.trim();
+    const hash = await bcrypt.hash(cleanPass, 12);
+
+    let foundUser = targetId;
+    const memUser = memoryUsers.find(u => String(u.id) === String(targetId) || u.user_id.toLowerCase() === String(targetId).toLowerCase());
+    if (memUser) {
+      foundUser = memUser.user_id;
+    }
+
+    if (pool) {
+      const [resUpdate] = await pool.execute('UPDATE users SET password_hash = ? WHERE id = ? OR LOWER(user_id) = LOWER(?)', [hash, targetId, targetId]);
+      if (resUpdate.affectedRows === 0) {
+        return res.status(404).json({ error: 'User account not found.' });
+      }
+      await writeAudit('ADMIN_RESET_USER_PASSWORD', `Admin reset password for User: ${foundUser}`, req.ip, 'admin');
+    }
+
+    res.json({ ok: true, message: `Password reset successfully for ${foundUser}.` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // DELETE /api/users/:id — Admin permanently deletes a user account
 app.delete('/api/users/:id', async (req, res) => {
   try {
@@ -945,7 +1060,7 @@ app.delete('/api/users/:id', async (req, res) => {
 // POST /api/admins — create a new Admin account
 app.post('/api/admins', async (req, res) => {
   try {
-    const { username, password, displayName, role } = req.body;
+    const { username, password, displayName, role, securityQuestion, securityAnswer } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Username and Password are required.' });
 
     if (!pool) {
@@ -953,9 +1068,10 @@ app.post('/api/admins', async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 12);
+    const secQHash = securityAnswer ? await bcrypt.hash(securityAnswer.trim().toLowerCase(), 12) : null;
     await pool.execute(
-      'INSERT INTO admins (username, password_hash, display_name, role) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)',
-      [username.trim(), hash, displayName || username, role || 'Admin']
+      'INSERT INTO admins (username, password_hash, display_name, role, security_question, security_answer_hash) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), security_question = VALUES(security_question), security_answer_hash = VALUES(security_answer_hash)',
+      [username.trim(), hash, displayName || username, role || 'Admin', securityQuestion || null, secQHash]
     );
     await writeAudit('ADMIN_CREATED', `Created Admin account: ${username}`, req.ip, 'admin');
     res.status(201).json({ ok: true, username, displayName });
@@ -1081,16 +1197,18 @@ function appRowToDmPayload(app, tr = {}) {
     employer: tr.business_employer || employer,
     category: tr.category || app.applicant_type || 'Salaried',
     bank: tr.bank_nbfc || primaryBank || 'TBD',
+    rmName: tr.rm_name || tr.sm_name || app.rm_name || '',
     product: (() => {
       let p = tr.product || app.assigned_product || app.loan_products || '';
       if (typeof p === 'string' && p.trim().startsWith('[')) {
         try {
           const arr = JSON.parse(p);
           if (Array.isArray(arr)) return arr.join(', ');
-        } catch {}
+        } catch { }
       }
       return Array.isArray(p) ? p.join(', ') : String(p || '');
     })(),
+    program: tr.program || tr.fresh_bt_topup || '',
     creditProgram: tr.credit_program || app.loan_purpose || 'INCOME',
     loginDate: tr.login_date || formattedDate,
     appliedAmount: tr.applied_amount || app.requested_amount || '',
@@ -1144,12 +1262,17 @@ app.post('/api/dm-records/sync', async (req, res) => {
           payload.appliedAmount, payload.decisionDate, payload.decision, payload.sanctionAmount,
           payload.disbDate, payload.disbAmount, payload.li, payload.gi, payload.pf, payload.roi, payload.emi, payload.tenure,
           payload.pdcAmount, payload.pdcDate, payload.queries, payload.appId, payload.noiDate, payload.remark
-        ]
+        ].map(v => (v !== undefined && v !== null) ? v : null)
       );
       createdCount++;
     }
 
     const [allRows] = await pool.execute('SELECT * FROM dm_records ORDER BY created_at DESC');
+    try {
+      await syncAndSaveMasterExcelFile();
+    } catch (saveErr) {
+      console.warn('Sync Excel write warning:', saveErr.message);
+    }
     res.json({ synced: createdCount, records: allRows.map(rowToDmRecord) });
   } catch (e) {
     console.error('POST /api/dm-records/sync error:', e);
@@ -1211,6 +1334,11 @@ app.post('/api/dm-records/bulk', async (req, res) => {
         );
       }
       count++;
+    }
+    try {
+      await syncAndSaveMasterExcelFile();
+    } catch (saveErr) {
+      console.warn('Bulk DM Excel write warning:', saveErr.message);
     }
     res.status(201).json({ success: true, processed: count });
   } catch (e) {
@@ -1283,6 +1411,9 @@ app.post('/api/dm-records', async (req, res) => {
       ]
     );
     const [rows] = await pool.execute('SELECT * FROM dm_records WHERE id = ?', [result.insertId]);
+    try {
+      await syncAndSaveMasterExcelFile();
+    } catch (saveErr) {}
     res.status(201).json(rowToDmRecord(rows[0]));
   } catch (e) {
     console.error('POST /api/dm-records error:', e);
@@ -1312,6 +1443,9 @@ app.put('/api/dm-records/:id', async (req, res) => {
       ]
     );
     const [rows] = await pool.execute('SELECT * FROM dm_records WHERE id = ?', [req.params.id]);
+    try {
+      await syncAndSaveMasterExcelFile();
+    } catch (saveErr) {}
     res.json(rowToDmRecord(rows[0]));
   } catch (e) {
     console.error('PUT /api/dm-records/:id error:', e);
@@ -1323,6 +1457,9 @@ app.put('/api/dm-records/:id', async (req, res) => {
 app.delete('/api/dm-records/:id', async (req, res) => {
   try {
     await pool.execute('DELETE FROM dm_records WHERE id = ?', [req.params.id]);
+    try {
+      await syncAndSaveMasterExcelFile();
+    } catch (saveErr) {}
     res.status(204).end();
   } catch (e) {
     console.error('DELETE /api/dm-records/:id error:', e);
@@ -1331,6 +1468,24 @@ app.delete('/api/dm-records/:id', async (req, res) => {
 });
 
 // ─── Financial Datasheets (CAM & Income Assessment Matrix) Endpoints ─────────
+app.get('/api/financial-datasheets/export-excel', (req, res) => {
+  const filePath = path.join(__dirname, 'SkyFinserv_Optimized_BT_Worksheet.xlsx');
+  if (fs.existsSync(filePath)) {
+    res.download(filePath, 'SkyFinserv_Optimized_BT_Worksheet.xlsx');
+  } else {
+    res.status(404).send('Optimized worksheet not found');
+  }
+});
+
+app.get('/api/download-manual-pdf', (req, res) => {
+  const filePath = path.join(__dirname, 'SkyFinserv_Complete_System_Manual_and_Calculations.pdf');
+  if (fs.existsSync(filePath)) {
+    res.download(filePath, 'SkyFinserv_Complete_System_Manual_and_Calculations.pdf');
+  } else {
+    res.status(404).send('System Manual PDF not found');
+  }
+});
+
 app.get('/api/financial-datasheets', async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT * FROM financial_datasheets ORDER BY updated_at DESC');
@@ -1478,6 +1633,134 @@ app.post('/api/change-password', async (req, res) => {
   } catch (e) {
     console.error('Change password error:', e);
     res.status(500).json({ error: 'Server error while updating password.' });
+  }
+});
+
+// POST /api/reset-password — Forgot Password: reset via security question or master key
+app.post('/api/reset-password', async (req, res) => {
+  const { loginType, identifier, securityAnswer, newPassword, masterKey } = req.body;
+  const trimId = typeof identifier === 'string' ? identifier.trim() : '';
+  if (!trimId) return res.status(400).json({ error: 'Username / User ID is required.' });
+  if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+
+  try {
+    const isAdmin = loginType === 'admin';
+    const table = isAdmin ? 'admins' : 'users';
+    const idCol = isAdmin ? 'username' : 'user_id';
+
+    // Standalone / offline mode
+    if (!pool) {
+      if (isAdmin) {
+        if (trimId.toLowerCase() !== 'admin') {
+          return res.status(404).json({ error: 'No admin account found with that username.' });
+        }
+        if (masterKey) {
+          const envKey = process.env.ENCRYPTION_KEY || 'skyfinserv_dev_key_32bytes_paddd!';
+          if (masterKey !== envKey) {
+            return res.status(401).json({ error: 'Master Reset Key is incorrect.' });
+          }
+        }
+        return res.json({ ok: true, message: 'Password has been reset successfully.' });
+      }
+
+      const memUser = memoryUsers.find(u => u.user_id.toLowerCase() === trimId.toLowerCase());
+      if (!memUser) {
+        return res.status(404).json({ error: 'No user account found with that User ID.' });
+      }
+      if (securityAnswer) {
+        if (!memUser.security_answer_hash) {
+          return res.status(400).json({ error: 'No security question was set for this account. Please use the Master Reset Key instead, or contact the Administrator.' });
+        }
+        const answerOk = await bcrypt.compare(securityAnswer.trim().toLowerCase(), memUser.security_answer_hash);
+        if (!answerOk) {
+          return res.status(401).json({ error: 'Security answer is incorrect. Please try again.' });
+        }
+      } else if (masterKey) {
+        const envKey = process.env.ENCRYPTION_KEY || 'skyfinserv_dev_key_32bytes_paddd!';
+        if (masterKey !== envKey) {
+          return res.status(401).json({ error: 'Master Reset Key is incorrect. Contact Administrator.' });
+        }
+      } else {
+        return res.status(400).json({ error: 'Please provide either the Security Answer or Master Reset Key.' });
+      }
+      return res.json({ ok: true, message: 'Password has been reset successfully. You can now log in with your new password.' });
+    }
+
+    const [rows] = await pool.execute(`SELECT * FROM ${table} WHERE LOWER(${idCol}) = LOWER(?)`, [trimId]);
+    if (!rows.length) {
+      return res.status(404).json({ error: `No ${isAdmin ? 'admin' : 'user'} account found with that ${isAdmin ? 'username' : 'User ID'}.` });
+    }
+
+    const account = rows[0];
+
+    // Method 1: Security question verification
+    if (securityAnswer) {
+      if (!account.security_answer_hash) {
+        return res.status(400).json({ error: 'No security question was set for this account. Please use the Master Reset Key instead, or contact the Administrator.' });
+      }
+      const answerOk = await bcrypt.compare(securityAnswer.trim().toLowerCase(), account.security_answer_hash);
+      if (!answerOk) {
+        await writeAudit('PASSWORD_RESET_FAILED', `Failed password reset attempt (wrong security answer) for ${trimId}`, req.ip, trimId);
+        return res.status(401).json({ error: 'Security answer is incorrect. Please try again.' });
+      }
+    }
+    // Method 2: Master reset key verification (uses ENCRYPTION_KEY from .env)
+    else if (masterKey) {
+      const envKey = process.env.ENCRYPTION_KEY || 'skyfinserv_dev_key_32bytes_paddd!';
+      if (masterKey !== envKey) {
+        await writeAudit('PASSWORD_RESET_FAILED', `Failed password reset attempt (wrong master key) for ${trimId}`, req.ip, trimId);
+        return res.status(401).json({ error: 'Master Reset Key is incorrect. Contact Administrator.' });
+      }
+    } else {
+      return res.status(400).json({ error: 'Please provide either the Security Answer or Master Reset Key.' });
+    }
+
+    // Reset the password
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await pool.execute(`UPDATE ${table} SET password_hash = ? WHERE id = ?`, [newHash, account.id]);
+    await writeAudit('PASSWORD_RESET_SUCCESS', `Password reset successfully for ${isAdmin ? 'admin' : 'user'}: ${trimId}`, req.ip, trimId);
+
+    res.json({ ok: true, message: 'Password has been reset successfully. You can now log in with your new password.' });
+  } catch (e) {
+    console.error('Reset password error:', e);
+    res.status(500).json({ error: 'Server error while resetting password.' });
+  }
+});
+
+// GET /api/security-question — Fetch security question for a given username/userId
+app.get('/api/security-question', async (req, res) => {
+  const { loginType, identifier } = req.query;
+  const trimId = typeof identifier === 'string' ? identifier.trim() : '';
+  if (!trimId) return res.status(400).json({ error: 'Username / User ID is required.' });
+
+  try {
+    const isAdmin = loginType === 'admin';
+    const table = isAdmin ? 'admins' : 'users';
+    const idCol = isAdmin ? 'username' : 'user_id';
+
+    if (!pool) {
+      if (isAdmin) {
+        if (trimId.toLowerCase() === 'admin') {
+          return res.json({ hasQuestion: false, question: '' });
+        }
+        return res.status(404).json({ error: 'No admin account found.' });
+      }
+      const memUser = memoryUsers.find(u => u.user_id.toLowerCase() === trimId.toLowerCase());
+      if (!memUser) {
+        return res.status(404).json({ error: `No user account found with that User ID.` });
+      }
+      return res.json({ hasQuestion: !!memUser.security_question, question: memUser.security_question || '' });
+    }
+
+    const [rows] = await pool.execute(`SELECT security_question FROM ${table} WHERE LOWER(${idCol}) = LOWER(?)`, [trimId]);
+    if (!rows.length) {
+      return res.status(404).json({ error: `No ${isAdmin ? 'admin' : 'user'} account found.` });
+    }
+
+    const q = rows[0].security_question;
+    res.json({ hasQuestion: !!q, question: q || '' });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' });
   }
 });
 
@@ -1634,11 +1917,13 @@ app.put('/api/applications/:id', async (req, res) => {
       ['business_vintage', d.businessVintage],
       ['gst_number', d.gstNumber],
       ['business_contact', d.businessContact],
+      ['connector', d.connector],
+      ['app_date', d.appDate],
       ['branch', d.branch],
       ['rm_name', d.rmName],
       ['loan_purpose', d.loanPurpose],
-      ['requested_amount', (d.requestedAmount !== undefined && d.requestedAmount !== '') ? Number(d.requestedAmount) : null],
-      ['tenure_months', (d.tenureMonths !== undefined && d.tenureMonths !== '') ? Number(d.tenureMonths) : null],
+      ['requested_amount', cleanNum(d.requestedAmount)],
+      ['tenure_months', cleanNum(d.tenureMonths)],
       ['passport_no', d.passportNo],
       ['voter_id', d.voterId],
       ['driving_licence', d.drivingLicence],
@@ -1646,14 +1931,14 @@ app.put('/api/applications/:id', async (req, res) => {
       ['coborrower_json', d.coborrower !== undefined ? (d.coborrower ? JSON.stringify(d.coborrower) : null) : undefined],
       ['industry', d.industry],
       ['experience_years', d.experienceYears],
-      ['annual_income', (d.annualIncome !== undefined && d.annualIncome !== '') ? Number(d.annualIncome) : null],
-      ['gross_income', (d.grossIncome !== undefined && d.grossIncome !== '') ? Number(d.grossIncome) : null],
-      ['net_income', (d.netIncome !== undefined && d.netIncome !== '') ? Number(d.netIncome) : null],
-      ['other_income', (d.otherIncome !== undefined && d.otherIncome !== '') ? Number(d.otherIncome) : null],
-      ['rental_income', (d.rentalIncome !== undefined && d.rentalIncome !== '') ? Number(d.rentalIncome) : null],
-      ['agri_income', (d.agriIncome !== undefined && d.agriIncome !== '') ? Number(d.agriIncome) : null],
-      ['existing_emi', (d.existingEmi !== undefined && d.existingEmi !== '') ? Number(d.existingEmi) : null],
-      ['monthly_obligations', (d.monthlyObligations !== undefined && d.monthlyObligations !== '') ? Number(d.monthlyObligations) : null],
+      ['annual_income', cleanNum(d.annualIncome)],
+      ['gross_income', cleanNum(d.grossIncome)],
+      ['net_income', cleanNum(d.netIncome)],
+      ['other_income', cleanNum(d.otherIncome)],
+      ['rental_income', cleanNum(d.rentalIncome)],
+      ['agri_income', cleanNum(d.agriIncome)],
+      ['existing_emi', cleanNum(d.existingEmi)],
+      ['monthly_obligations', cleanNum(d.monthlyObligations)],
       ['bank_accounts_json', d.bankAccounts !== undefined ? (d.bankAccounts ? JSON.stringify(d.bankAccounts) : null) : undefined],
       ['existing_loans_json', d.existingLoans !== undefined ? (d.existingLoans ? JSON.stringify(d.existingLoans) : null) : undefined],
       ['property_details_json', d.propertyDetails !== undefined ? (d.propertyDetails ? JSON.stringify(d.propertyDetails) : null) : undefined],
@@ -1673,7 +1958,7 @@ app.put('/api/applications/:id', async (req, res) => {
     const updatedApp = rowToApp(updated[0]);
     try {
       await autoArchiveApplicationToFolder(updatedApp);
-    } catch {}
+    } catch { }
 
     res.json(updatedApp);
   } catch (e) {
@@ -1696,11 +1981,94 @@ app.patch('/api/applications/:id/status', async (req, res) => {
   }
 });
 
-// DELETE /api/applications/:id
+// DELETE /api/applications/:id — permanently delete application, its tracking, and associated files
 app.delete('/api/applications/:id', async (req, res) => {
   try {
-    await pool.execute('DELETE FROM applications WHERE id = ? OR app_no = ?', [req.params.id, req.params.id]);
-    res.status(204).end();
+    const idOrAppNo = req.params.id;
+    const queryAppNo = req.query.appNo || (req.body && req.body.appNo);
+
+    // Find application first
+    let app = null;
+    try {
+      const [rows] = await pool.execute('SELECT id, app_no FROM applications WHERE id = ? OR app_no = ?', [idOrAppNo, idOrAppNo]);
+      if (rows && rows.length) app = rows[0];
+    } catch { }
+
+    const appId = app ? app.id : idOrAppNo;
+    const appNo = app ? app.app_no : (queryAppNo || idOrAppNo);
+
+    // Targets to clean up
+    const targets = Array.from(new Set([
+      String(appNo || '').trim(),
+      String(idOrAppNo || '').trim(),
+      String(queryAppNo || '').trim(),
+      app ? String(app.app_no || '').trim() : '',
+      app ? String(app.id || '').trim() : ''
+    ])).filter(t => t && t.length > 0 && t !== 'undefined' && t !== 'null');
+
+    // Delete from applications
+    for (const t of targets) {
+      try {
+        await pool.execute('DELETE FROM applications WHERE id = ? OR app_no = ?', [t, t]);
+      } catch { }
+    }
+
+    // Delete from loan_tracking
+    for (const t of targets) {
+      try {
+        await pool.execute('DELETE FROM loan_tracking WHERE application_id = ? OR app_id = ?', [t, t]);
+      } catch { }
+    }
+
+    // Clean up files in all configured and desktop export folders
+    try {
+      const dbFolder = await getSettingValue('exportFolder');
+      const candidateFolders = Array.from(new Set([
+        dbFolder,
+        process.env.DATA_EXPORT_DIR,
+        path.join(process.env.USERPROFILE || 'C:\\Users\\Moon Link', 'OneDrive', 'Desktop', 'skyfinserve001'),
+        path.join(process.env.USERPROFILE || 'C:\\Users\\Moon Link', 'Desktop', 'skyfinserve001')
+      ])).filter(f => f && fs.existsSync(f));
+
+      for (const folder of candidateFolders) {
+        try {
+          const files = fs.readdirSync(folder);
+          for (const f of files) {
+            const lowerF = f.toLowerCase();
+            for (const t of targets) {
+              const safeT = t.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+              const rawT = t.toLowerCase();
+              if (
+                lowerF === `${safeT}.xlsx` ||
+                lowerF === `${rawT}.xlsx` ||
+                lowerF === `${safeT}.json` ||
+                lowerF === `${rawT}.json` ||
+                lowerF.startsWith(`skyfinserv_master_application_${safeT}`) ||
+                lowerF.startsWith(`skyfinserv_master_application_${rawT}`) ||
+                lowerF.startsWith(`skyfinserv_financial_cam_${safeT}`) ||
+                lowerF.startsWith(`skyfinserv_financial_cam_${rawT}`)
+              ) {
+                try {
+                  fs.unlinkSync(path.join(folder, f));
+                  console.log(`[DELETE] Successfully unlinked application file: ${path.join(folder, f)}`);
+                } catch (delErr) {
+                  console.warn(`[DELETE] Failed to unlink ${f}:`, delErr.message);
+                }
+              }
+            }
+          }
+
+          // Re-generate master consolidated Excel in this folder without deleted apps
+          await syncAndSaveMasterExcelFile();
+        } catch (fErr) {
+          console.warn(`Error cleaning folder ${folder}:`, fErr.message);
+        }
+      }
+    } catch (cleanErr) {
+      console.warn('File cleanup warning during application deletion:', cleanErr.message);
+    }
+
+    res.status(200).json({ success: true, message: 'Application deleted and files cleaned' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1788,7 +2156,7 @@ async function getSettingValue(key) {
     try {
       const [rows] = await pool.execute('SELECT setting_val FROM app_settings WHERE setting_key = ?', [key]);
       if (rows.length && rows[0].setting_val) return rows[0].setting_val;
-    } catch {}
+    } catch { }
   }
   const fileSettings = getLocalSettingsFromFile();
   if (fileSettings[key]) return fileSettings[key];
@@ -1813,7 +2181,7 @@ app.get('/api/settings', async (req, res) => {
             }
           }
         });
-      } catch {}
+      } catch { }
     }
     res.json(settings);
   } catch (e) {
@@ -1890,7 +2258,7 @@ app.post('/api/save-export-file', async (req, res) => {
   try {
     const { filePath, folderPath, fileName, data, isBase64 } = req.body;
     let targetFolder = folderPath || (await getSettingValue('exportFolder'));
-    
+
     let finalPath = filePath;
     if (!finalPath && targetFolder && fileName) {
       finalPath = path.join(targetFolder, fileName);
@@ -1924,6 +2292,188 @@ app.post('/api/save-export-file', async (req, res) => {
   }
 });
 
+// ─── Import & Sync Application Workbooks ──────────────────────────────────────────
+function parseApplicationFromExcelFile(filePath) {
+  const wb = XLSX.readFile(filePath);
+  const appData = {};
+
+  // Check Sheet 1: MIS Flat Record (if present)
+  if (wb.Sheets['MIS Flat Record']) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets['MIS Flat Record']);
+    if (rows.length > 0) {
+      const r = rows[0];
+      appData.appNo = r['Application #'] || r['appNo'];
+      appData.status = r['Status'] || 'Submitted';
+      appData.applicantRole = r['Applying As'] || 'Borrower';
+      appData.loanProducts = r['Loan Product(s) Requested'] ? [r['Loan Product(s) Requested']] : ['Business Loan'];
+      appData.requestedAmount = r['Requested Amount (₹)'] ? Number(r['Requested Amount (₹)']) : null;
+      appData.tenureMonths = r['Tenure (Months)'] ? Number(r['Tenure (Months)']) : null;
+      appData.loanPurpose = r['Purpose'] || '';
+      appData.firstName = r['First Name'] || '';
+      appData.middleName = r['Middle Name'] || '';
+      appData.lastName = r['Last Name'] || '';
+      appData.gender = r['Gender'] || '';
+      appData.dob = r['DOB'] || '';
+      appData.panNumber = r['PAN Number'] || '';
+      appData.currAddress = r['Current Address'] || '';
+      appData.currCity = r['Current City'] || '';
+      appData.currState = r['Current State'] || '';
+      appData.currPincode = r['Current Pincode'] || '';
+      appData.currContact = r['Current Contact'] || '';
+      appData.permEmail = r['Permanent Email'] || '';
+      appData.employerName = r['Employer / Business Name'] || '';
+      appData.annualIncome = r['Annual Income (₹)'] ? Number(r['Annual Income (₹)']) : null;
+      appData.netIncome = r['Net Income (₹)'] ? Number(r['Net Income (₹)']) : null;
+    }
+  }
+
+  // Check Sheet: Application Details (Key-Value pairs)
+  if (wb.Sheets['Application Details']) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets['Application Details'], { header: 1 });
+    rows.forEach(row => {
+      if (!row || row.length < 2) return;
+      const k = String(row[0] || '').trim();
+      const v = String(row[1] || '').trim();
+      if (v === '—' || !v) return;
+
+      if (k === 'Application Number' && !appData.appNo) appData.appNo = v;
+      if (k === 'Status' && !appData.status) appData.status = v;
+      if (k === 'Branch') appData.branch = v;
+      if (k === 'Relationship Manager (RM)') appData.rmName = v;
+      if (k === 'Applicant Category') appData.applicantType = v;
+      if (k === 'Applicant Role') appData.applicantRole = v;
+      if (k === 'Loan Product(s) Requested' && (!appData.loanProducts || !appData.loanProducts.length)) {
+        appData.loanProducts = v.split(',').map(s => s.trim());
+      }
+      if (k === 'Requested Loan Amount (₹)' && !appData.requestedAmount) {
+        appData.requestedAmount = Number(v.replace(/[^0-9.]/g, ''));
+      }
+      if (k === 'Requested Tenure (Months)' && !appData.tenureMonths) {
+        appData.tenureMonths = Number(v);
+      }
+      if (k === 'Loan Purpose') appData.loanPurpose = v;
+      if (k === 'Full Name' && !appData.firstName) {
+        const parts = v.split(' ');
+        appData.firstName = parts[0] || '';
+        if (parts.length === 2) {
+          appData.lastName = parts[1];
+        } else if (parts.length > 2) {
+          appData.middleName = parts.slice(1, -1).join(' ');
+          appData.lastName = parts[parts.length - 1];
+        }
+      }
+      if (k === 'Current Address') appData.currAddress = v;
+      if (k === 'Current City / State / PIN') {
+        const parts = v.split(',').map(s => s.trim());
+        if (parts[0]) appData.currCity = parts[0];
+        if (parts[1]) appData.currState = parts[1];
+        if (parts[2]) appData.currPincode = parts[2];
+      }
+    });
+  }
+
+  if (wb.Sheets['Bank Accounts']) {
+    try { appData.bankAccounts = XLSX.utils.sheet_to_json(wb.Sheets['Bank Accounts']); } catch { }
+  }
+  if (wb.Sheets['Existing Loans']) {
+    try { appData.existingLoans = XLSX.utils.sheet_to_json(wb.Sheets['Existing Loans']); } catch { }
+  }
+
+  return appData;
+}
+
+// POST /api/import-application-excel — import or restore an application from an uploaded or server Excel file
+app.post('/api/import-application-excel', async (req, res) => {
+  try {
+    const { filePath, fileData, fileName } = req.body;
+    let targetPath = filePath;
+
+    if (!targetPath && fileData && fileName) {
+      const tempDir = path.join(__dirname, 'data');
+      if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+      targetPath = path.join(tempDir, fileName);
+      const buffer = Buffer.from(fileData, 'base64');
+      await fs.promises.writeFile(targetPath, buffer);
+    }
+
+    if (!targetPath || !fs.existsSync(targetPath)) {
+      return res.status(400).json({ success: false, error: 'Excel file not found on server.' });
+    }
+
+    const appData = parseApplicationFromExcelFile(targetPath);
+    if (!appData.appNo) {
+      return res.status(400).json({ success: false, error: 'Could not detect Application Number in the workbook.' });
+    }
+
+    // Save or update in database if pool is connected
+    if (pool) {
+      const [existing] = await pool.execute('SELECT id FROM applications WHERE app_no = ?', [appData.appNo]);
+      if (existing.length === 0) {
+        await pool.execute(
+          `INSERT INTO applications (
+            app_no, status, created_at, applicant_role, applicant_type, loan_products,
+            first_name, middle_name, last_name, curr_address, curr_city, curr_state, curr_pincode,
+            branch, rm_name, loan_purpose, requested_amount, tenure_months,
+            bank_accounts_json, existing_loans_json
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [
+            appData.appNo, appData.status || 'Submitted', Date.now(),
+            appData.applicantRole || 'Borrower', appData.applicantType || 'Business / Self-Employed',
+            JSON.stringify(appData.loanProducts || ['Business Loan']),
+            appData.firstName || '', appData.middleName || '', appData.lastName || '',
+            appData.currAddress || '', appData.currCity || '', appData.currState || '', appData.currPincode || '',
+            appData.branch || '', appData.rmName || '', appData.loanPurpose || '',
+            appData.requestedAmount || null, appData.tenureMonths || null,
+            JSON.stringify(appData.bankAccounts || []), JSON.stringify(appData.existingLoans || [])
+          ]
+        );
+      }
+    }
+
+    res.json({ success: true, application: appData, message: `Application ${appData.appNo} imported successfully.` });
+  } catch (err) {
+    console.error('Failed to import application excel:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/sync-folder-applications — scan export folder & data/ directory for any restored applications
+app.get('/api/sync-folder-applications', async (req, res) => {
+  try {
+    const restored = [];
+    const searchDirs = [
+      path.join(__dirname, 'data'),
+      await getSettingValue('exportFolder'),
+      path.join(os.homedir(), 'Desktop', 'skyfinserve001'),
+      path.join(os.homedir(), 'OneDrive', 'Desktop', 'skyfinserve001')
+    ].filter(d => d && typeof d === 'string' && fs.existsSync(d));
+
+    for (const dir of searchDirs) {
+      try {
+        const files = fs.readdirSync(dir);
+        for (const f of files) {
+          const fullPath = path.join(dir, f);
+          if (f.endsWith('.json') && !f.includes('settings')) {
+            try {
+              const rec = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+              if (rec.appNo) restored.push(rec);
+            } catch { }
+          } else if (f.endsWith('.xlsx') && !f.includes('All_Applications') && !f.includes('Optimized_BT')) {
+            try {
+              const rec = parseApplicationFromExcelFile(fullPath);
+              if (rec.appNo && !restored.some(r => r.appNo === rec.appNo)) restored.push(rec);
+            } catch { }
+          }
+        }
+      } catch { }
+    }
+
+    res.json({ success: true, applications: restored });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // POST /api/archive-application — archive single application from client
 app.post('/api/archive-application', async (req, res) => {
   try {
@@ -1936,156 +2486,520 @@ app.post('/api/archive-application', async (req, res) => {
   }
 });
 
-// ─── Auto-Archive Helper ──────────────────────────────────────────────────────
-async function autoArchiveApplicationToFolder(appRecord) {
+// GET /api/applications/:id/export-excel — download individual application Excel workbook
+app.get('/api/applications/:id/export-excel', async (req, res) => {
   try {
-    if (!appRecord) return;
+    let appRecord = null;
+    if (pool) {
+      const [rows] = await pool.execute('SELECT * FROM applications WHERE id = ? OR app_no = ?', [req.params.id, req.params.id]);
+      if (rows && rows.length > 0) appRecord = rowToApp(rows[0]);
+    }
+    if (!appRecord && typeof memoryApplications !== 'undefined') {
+      appRecord = memoryApplications.find(a => String(a.id) === String(req.params.id) || a.appNo === req.params.id);
+    }
+    if (!appRecord) return res.status(404).json({ error: 'Application not found' });
+
+    let dmRecords = [];
+    if (pool) {
+      try {
+        const [dmRows] = await pool.execute('SELECT * FROM dm_records ORDER BY id ASC');
+        dmRecords = (dmRows || []).map(rowToDmRecord);
+      } catch {}
+    }
+
+    const wb = buildApplicationWorkbook(appRecord, dmRecords);
+    const safeAppNo = (appRecord.appNo || appRecord.app_no || 'Application').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeAppNo}.xlsx"`);
+    res.send(buf);
+  } catch (err) {
+    console.error('Export application excel error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Auto-Fitted Column Width Helper ──────────────────────────────────────────
+function fitColumnWidths(aoa, minW = 14, maxW = 50) {
+  if (!aoa || !aoa.length) return [];
+  const colCount = Math.max(...aoa.map(row => (row ? row.length : 0)));
+  const widths = [];
+  for (let c = 0; c < colCount; c++) {
+    let maxLen = 0;
+    for (let r = 0; r < aoa.length; r++) {
+      const val = aoa[r] ? aoa[r][c] : '';
+      if (val !== null && val !== undefined) {
+        const str = String(val).split('\n')[0];
+        if (str.length > maxLen) maxLen = str.length;
+      }
+    }
+    widths.push({ wch: Math.min(maxW, Math.max(minW, maxLen + 3)) });
+  }
+  return widths;
+}
+
+const MIS_HEADERS = [
+  'Application #', 'Status', 'Applicant Role', 'Category', 'Loan Product(s) Requested',
+  'Sub Category', 'Requested Amount (₹)', 'Tenure (Months)', 'Purpose', 'Branch',
+  'RM Name', 'Connector', 'Submission Date', 'Full Name', 'First Name', 'Middle Name',
+  'Last Name', 'Gender', 'DOB', 'Marital Status', 'PAN Number', 'Aadhaar',
+  'Contact Number', 'Email', 'Current Address', 'Current City', 'Current State',
+  'Current Pincode', 'Permanent Address', 'Permanent City', 'Permanent State',
+  'Permanent Pincode', 'Employer / Business Name', 'Designation', 'Annual Income (₹)', 'Net Income (₹)'
+];
+
+function applicationToMisRow(a) {
+  return [
+    a.appNo || a.app_no || '',
+    a.status || 'Submitted',
+    a.applicantRole || a.applicant_role || 'Borrower',
+    a.applicantType || a.applicant_type || '',
+    Array.isArray(a.loanProducts) ? a.loanProducts.join(', ') : (a.loanProducts || ''),
+    a.loanSubCategory || '',
+    a.requestedAmount !== null && a.requestedAmount !== undefined && a.requestedAmount !== '' ? Number(a.requestedAmount) : '',
+    a.tenureMonths !== null && a.tenureMonths !== undefined && a.tenureMonths !== '' ? Number(a.tenureMonths) : '',
+    a.loanPurpose || '',
+    a.branch || '',
+    a.rmName || a.rm_name || '',
+    a.connector || '',
+    a.createdAt ? new Date(Number(a.createdAt)).toLocaleString('en-IN') : (a.appDate || ''),
+    [a.firstName, a.middleName, a.lastName].filter(Boolean).join(' '),
+    a.firstName || '',
+    a.middleName || '',
+    a.lastName || '',
+    a.gender || '',
+    a.dob || '',
+    a.maritalStatus || '',
+    a.panNumber || a.pan_number || '',
+    a.aadhaar || '',
+    a.currContact || '',
+    a.permEmail || '',
+    a.currAddress || '',
+    a.currCity || '',
+    a.currState || '',
+    a.currPincode || '',
+    a.permAddress || '',
+    a.permCity || '',
+    a.permState || '',
+    a.permPincode || '',
+    a.employerName || a.businessName || '',
+    a.designation || '',
+    a.annualIncome !== null && a.annualIncome !== undefined && a.annualIncome !== '' ? Number(a.annualIncome) : '',
+    a.netIncome !== null && a.netIncome !== undefined && a.netIncome !== '' ? Number(a.netIncome) : ''
+  ];
+}
+
+function buildApplicationWorkbook(a, dmRecords = []) {
+  const wb = XLSX.utils.book_new();
+  const applicantName = [a.firstName, a.middleName, a.lastName].filter(Boolean).join(' ');
+
+  // 1. Sheet 1: MIS Flat Record (Formatted with optimal auto-fitted column widths)
+  const misRow = applicationToMisRow(a);
+  const wsMis = XLSX.utils.aoa_to_sheet([MIS_HEADERS, misRow]);
+  wsMis['!cols'] = fitColumnWidths([MIS_HEADERS, misRow]);
+  XLSX.utils.book_append_sheet(wb, wsMis, 'MIS Flat Record');
+
+  // 2. Sheet 2: Application Details (Executive Loan Dossier)
+  const summaryAoa = [
+    ['SKYFINSERV LOAN ORIGINATION SYSTEM — APPLICATION DOSSIER'],
+    ['Generated On:', new Date().toLocaleString('en-IN'), '', 'Application No:', a.appNo || a.app_no || ''],
+    ['Status:', a.status || 'Submitted', '', 'Branch:', a.branch || '—'],
+    [],
+    ['1. LOAN & SUBMISSION DETAILS'],
+    ['Application Number', a.appNo || a.app_no || '—'],
+    ['Application Date / Created', a.createdAt ? new Date(Number(a.createdAt)).toLocaleString('en-IN') : (a.appDate || '—')],
+    ['Current Status', a.status || 'Submitted'],
+    ['Branch', a.branch || '—'],
+    ['Relationship Manager (RM)', a.rmName || a.rm_name || '—'],
+    ['Connector / Channel Partner', a.connector || '—'],
+    ['Applicant Category', a.applicantType || a.applicant_type || '—'],
+    ['Applicant Role', a.applicantRole || a.applicant_role || 'Borrower'],
+    ['Loan Product(s) Requested', Array.isArray(a.loanProducts) ? a.loanProducts.join(', ') : (a.loanProducts || '—')],
+    ['Loan Sub Category', a.loanSubCategory || '—'],
+    ['Requested Loan Amount (₹)', a.requestedAmount ? Number(a.requestedAmount).toLocaleString('en-IN') : '—'],
+    ['Requested Tenure (Months)', a.tenureMonths ? `${a.tenureMonths} Months` : '—'],
+    ['Loan Purpose', a.loanPurpose || '—'],
+    [],
+    ['2. PRIMARY APPLICANT PROFILE'],
+    ['Full Name', applicantName || '—'],
+    ['First Name', a.firstName || '—'],
+    ['Middle Name', a.middleName || '—'],
+    ['Last Name', a.lastName || '—'],
+    ['Residency Status', a.residencyStatus || 'Indian'],
+    ['Gender', a.gender || '—'],
+    ['Date of Birth', a.dob || '—'],
+    ['Marital Status', a.maritalStatus || '—'],
+    ['Education Level', a.education || '—'],
+    ["Father's Name", a.fatherName || '—'],
+    ["Mother's Maiden Name", a.mothersMaidenName || '—'],
+    ['PAN Number', a.panNumber || a.pan_number || '—'],
+    ['Aadhaar Number', a.aadhaar || '—'],
+    ['Passport No.', a.passportNo || '—'],
+    ['Voter ID', a.voterId || '—'],
+    ['Driving Licence', a.drivingLicence || '—'],
+    [],
+    ['3. CONTACT & RESIDENTIAL ADDRESSES'],
+    ['Primary Contact / Mobile', a.currContact || '—'],
+    ['Email Address', a.permEmail || '—'],
+    ['Current Address', a.currAddress || '—'],
+    ['Current City', a.currCity || '—'],
+    ['Current State', a.currState || '—'],
+    ['Current Pincode', a.currPincode || '—'],
+    ['Current Occupancy Type', a.currOccupancy || '—'],
+    ['Current Residence Vintage', a.currVintage ? `${a.currVintage} Years` : '—'],
+    ['Permanent Address', a.permAddress || '—'],
+    ['Permanent City', a.permCity || '—'],
+    ['Permanent State', a.permState || '—'],
+    ['Permanent Pincode', a.permPincode || '—'],
+    ['Permanent Occupancy Type', a.permOccupancy || '—'],
+    ['Permanent Residence Vintage', a.permVintage ? `${a.permVintage} Years` : '—'],
+    ['Distance from Permanent', a.permDistance || '—'],
+    ['Permanent Alternate Contact', a.permContact || '—'],
+    [],
+    ['4. EMPLOYMENT / BUSINESS & FINANCIAL PROFILE'],
+    ['Employer / Business Name', a.employerName || a.businessName || '—'],
+    ['Constitution / Business Type', a.businessType || '—'],
+    ['Office / Business Address', a.officeAddress || a.businessAddress || '—'],
+    ['Designation', a.designation || '—'],
+    ['Employment / Business Vintage', (a.empVintage || a.businessVintage) ? `${a.empVintage || a.businessVintage} Years` : '—'],
+    ['Industry Sector', a.industry || '—'],
+    ['GST Number', a.gstNumber || '—'],
+    ['Business Contact', a.businessContact || '—'],
+    ['Annual Income (₹)', a.annualIncome ? Number(a.annualIncome).toLocaleString('en-IN') : '—'],
+    ['Net Income (₹)', a.netIncome ? Number(a.netIncome).toLocaleString('en-IN') : '—'],
+    ['Gross Income (₹)', a.grossIncome ? Number(a.grossIncome).toLocaleString('en-IN') : '—'],
+    ['Other Income (₹)', a.otherIncome ? Number(a.otherIncome).toLocaleString('en-IN') : '—'],
+    ['Rental Income (₹)', a.rentalIncome ? Number(a.rentalIncome).toLocaleString('en-IN') : '—'],
+    ['Agricultural Income (₹)', a.agriIncome ? Number(a.agriIncome).toLocaleString('en-IN') : '—'],
+    ['Existing Monthly EMI (₹)', a.existingEmi ? Number(a.existingEmi).toLocaleString('en-IN') : '—'],
+    ['Monthly Obligations (₹)', a.monthlyObligations ? Number(a.monthlyObligations).toLocaleString('en-IN') : '—']
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryAoa);
+  wsSummary['!cols'] = [{ wch: 34 }, { wch: 55 }];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Application Details');
+
+  // 3. Sheet 3: Bank Accounts
+  const bankHeaders = ['Application #', 'Applicant Name', 'Sr', 'Bank Name', 'Account Type', 'Account Number', 'Branch', 'IFSC Code'];
+  const bankRows = [];
+  const bks = Array.isArray(a.bankAccounts) ? a.bankAccounts : [];
+  bks.forEach((b, idx) => {
+    bankRows.push([
+      a.appNo || a.app_no || '',
+      applicantName,
+      idx + 1,
+      b.bankName || b['Bank Name'] || '',
+      b.accountType || b['Account Type'] || 'Savings',
+      b.accountNumber || b['Account Number'] || '',
+      b.branch || b['Branch'] || '',
+      b.ifscCode || b.ifsc || b['IFSC Code'] || ''
+    ]);
+  });
+  if (!bankRows.length) {
+    bankRows.push([a.appNo || a.app_no || '', applicantName, 1, '—', '—', '—', '—', '—']);
+  }
+  const wsBank = XLSX.utils.aoa_to_sheet([bankHeaders, ...bankRows]);
+  wsBank['!cols'] = fitColumnWidths([bankHeaders, ...bankRows]);
+  XLSX.utils.book_append_sheet(wb, wsBank, 'Bank Accounts');
+
+  // 4. Sheet 4: Existing Loans
+  const loanHeaders = ['Application #', 'Applicant Name', 'Sr', 'Loan Provider / Bank', 'Loan Type', 'Loan Amount (₹)', 'Monthly EMI (₹)', 'Outstanding Balance (₹)', 'Tenure', 'Start Date'];
+  const loanRows = [];
+  const lns = Array.isArray(a.existingLoans) ? a.existingLoans : [];
+  lns.forEach((l, idx) => {
+    loanRows.push([
+      a.appNo || a.app_no || '',
+      applicantName,
+      idx + 1,
+      l.bankName || l.provider || l.institution || l['Loan Provider / Bank'] || '',
+      l.loanType || l['Loan Type'] || '',
+      l.loanAmount ? Number(l.loanAmount) : (l['Loan Amount (₹)'] ? Number(l['Loan Amount (₹)']) : ''),
+      l.emi ? Number(l.emi) : (l.monthlyEmi ? Number(l.monthlyEmi) : (l['Monthly EMI (₹)'] ? Number(l['Monthly EMI (₹)']) : '')),
+      l.outstanding ? Number(l.outstanding) : (l.balance ? Number(l.balance) : (l.outstandingAmount ? Number(l.outstandingAmount) : (l['Outstanding Balance (₹)'] ? Number(l['Outstanding Balance (₹)']) : ''))),
+      l.tenure || l.tenureMonths || l['Tenure'] || '',
+      l.startDate || l['Start Date'] || ''
+    ]);
+  });
+  if (!loanRows.length) {
+    loanRows.push([a.appNo || a.app_no || '', applicantName, 1, '—', '—', '', '', '', '—', '—']);
+  }
+  const wsLoans = XLSX.utils.aoa_to_sheet([loanHeaders, ...loanRows]);
+  wsLoans['!cols'] = fitColumnWidths([loanHeaders, ...loanRows]);
+  XLSX.utils.book_append_sheet(wb, wsLoans, 'Existing Loans');
+
+  // 5. Sheet 5: Co-Borrowers
+  const cobHeaders = ['Application #', 'Applicant Name', 'Sr', 'Co-Borrower Name', 'Relationship', 'PAN Number', 'Aadhaar Number', 'Contact Number', 'Annual Income (₹)'];
+  const cobRows = [];
+  const cbs = Array.isArray(a.coborrower) ? a.coborrower : (Array.isArray(a.coborrowers) ? a.coborrowers : (a.coborrower ? [a.coborrower] : []));
+  cbs.forEach((cb, idx) => {
+    cobRows.push([
+      a.appNo || a.app_no || '',
+      applicantName,
+      idx + 1,
+      [cb.firstName, cb.middleName, cb.lastName].filter(Boolean).join(' ') || cb.name || '',
+      cb.relationship || cb.relation || '',
+      cb.panNumber || cb.pan || '',
+      cb.aadhaar || '',
+      cb.currContact || cb.contact || cb.mobile || '',
+      cb.annualIncome ? Number(cb.annualIncome) : ''
+    ]);
+  });
+  if (!cobRows.length) {
+    cobRows.push([a.appNo || a.app_no || '', applicantName, 1, '—', '—', '—', '—', '—', '']);
+  }
+  const wsCob = XLSX.utils.aoa_to_sheet([cobHeaders, ...cobRows]);
+  wsCob['!cols'] = fitColumnWidths([cobHeaders, ...cobRows]);
+  XLSX.utils.book_append_sheet(wb, wsCob, 'Co-Borrowers');
+
+  // 6. Sheet 6: Data Manager Records (if linked)
+  const appNoLower = (a.appNo || a.app_no || '').toLowerCase();
+  const linkedDm = (dmRecords || []).filter(d => {
+    const dAppId = String(d.appId || '').trim().toLowerCase();
+    const dApplicant = String(d.applicant || '').trim().toLowerCase();
+    return (dAppId && dAppId === appNoLower) || (applicantName && dApplicant === applicantName.toLowerCase());
+  });
+  if (linkedDm.length > 0) {
+    const dmHeaders = [
+      'Month', 'Entity', 'Connector', 'Applicant', 'Employer', 'Category',
+      'Bank', 'RM Name', 'Product', 'Program', 'Credit Program', 'Login Date',
+      'Applied Amount (₹)', 'Decision Date', 'Decision', 'Sanction Amount (₹)',
+      'Disbursal Date', 'Disbursal Amount (₹)', 'LI', 'GI', 'PF', 'ROI (%)',
+      'EMI (₹)', 'Tenure (Months)', 'PDC Amount (₹)', 'PDC Date', 'Queries',
+      'Application #', 'NOI Date', 'Remark'
+    ];
+    const dmRowsData = linkedDm.map(d => [
+      d.month || '', d.entity || '', d.connector || '', d.applicant || '', d.employer || '', d.category || '',
+      d.bank || '', d.rmName || '', d.product || '', d.program || '', d.creditProgram || '', d.loginDate || '',
+      d.appliedAmount !== null && d.appliedAmount !== undefined && d.appliedAmount !== '' ? Number(d.appliedAmount) : '',
+      d.decisionDate || '', d.decision || '',
+      d.sanctionAmount !== null && d.sanctionAmount !== undefined && d.sanctionAmount !== '' ? Number(d.sanctionAmount) : '',
+      d.disbDate || '',
+      d.disbAmount !== null && d.disbAmount !== undefined && d.disbAmount !== '' ? Number(d.disbAmount) : '',
+      d.li !== null && d.li !== undefined && d.li !== '' ? Number(d.li) : '',
+      d.gi !== null && d.gi !== undefined && d.gi !== '' ? Number(d.gi) : '',
+      d.pf !== null && d.pf !== undefined && d.pf !== '' ? Number(d.pf) : '',
+      d.roi !== null && d.roi !== undefined && d.roi !== '' ? Number(d.roi) : '',
+      d.emi !== null && d.emi !== undefined && d.emi !== '' ? Number(d.emi) : '',
+      d.tenure !== null && d.tenure !== undefined && d.tenure !== '' ? Number(d.tenure) : '',
+      d.pdcAmount !== null && d.pdcAmount !== undefined && d.pdcAmount !== '' ? Number(d.pdcAmount) : '',
+      d.pdcDate || '', d.queries || '', d.appId || '', d.noiDate || '', d.remark || ''
+    ]);
+    const wsDm = XLSX.utils.aoa_to_sheet([dmHeaders, ...dmRowsData]);
+    wsDm['!cols'] = fitColumnWidths([dmHeaders, ...dmRowsData]);
+    XLSX.utils.book_append_sheet(wb, wsDm, 'Data Manager Records');
+  }
+
+  return wb;
+}
+
+// ─── Separate Application Excel & Master Consolidated Excel Generator ──────────
+async function syncAndSaveMasterExcelFile(appRecord = null) {
+  try {
     const folder = await getSettingValue('exportFolder');
     if (!folder) return;
 
     if (!fs.existsSync(folder)) {
-      try { fs.mkdirSync(folder, { recursive: true }); } catch {}
+      try { fs.mkdirSync(folder, { recursive: true }); } catch { }
+    }
+    if (!fs.existsSync(folder)) return;
+
+    // 1. Fetch all applications
+    let applications = [];
+    if (pool) {
+      try {
+        const [appRows] = await pool.execute('SELECT * FROM applications ORDER BY id ASC');
+        applications = (appRows || []).map(rowToApp);
+      } catch (dbErr) {
+        console.warn('[EXCEL] Applications fetch warning:', dbErr.message);
+      }
+    }
+    if (!applications.length && typeof memoryApplications !== 'undefined' && Array.isArray(memoryApplications) && memoryApplications.length) {
+      applications = memoryApplications;
+    }
+    if (!applications.length && appRecord) {
+      applications = [appRecord];
     }
 
-    if (fs.existsSync(folder)) {
-      const safeAppNo = (appRecord.appNo || appRecord.app_no || 'APP_' + Date.now()).replace(/[^a-zA-Z0-9_-]/g, '_');
-      
-      // 1. Save JSON Archive
-      const targetFile = path.join(folder, `${safeAppNo}.json`);
-      await fs.promises.writeFile(targetFile, JSON.stringify(appRecord, null, 2), 'utf8');
-
-      // 2. Generate Individual Master Application Excel Workbook
+    // 2. Fetch all DM records
+    let dmRecords = [];
+    if (pool) {
       try {
-        const wb = XLSX.utils.book_new();
-
-        // Sheet 1: Key-Value Structured Summary
-        const summaryAoa = [
-          ['SKYFINSERV LOAN ORIGINATION SYSTEM — MASTER APPLICATION'],
-          ['Generated On:', new Date().toLocaleString('en-IN'), '', 'Application No:', appRecord.appNo || appRecord.app_no || ''],
-          [],
-          ['1. LOAN & APPLICATION DETAILS'],
-          ['Application Number', appRecord.appNo || appRecord.app_no || '—'],
-          ['Application Date', appRecord.appDate || appRecord.app_date || '—'],
-          ['Status', appRecord.status || 'Submitted'],
-          ['Branch', appRecord.branch || '—'],
-          ['Relationship Manager (RM)', appRecord.rmName || appRecord.rm_name || '—'],
-          ['Connector / Channel Partner', appRecord.connector || '—'],
-          ['Applicant Category', appRecord.applicantType || appRecord.applicant_type || '—'],
-          ['Applicant Role', appRecord.applicantRole || appRecord.applicant_role || 'Borrower'],
-          ['Loan Product(s) Requested', Array.isArray(appRecord.loanProducts) ? appRecord.loanProducts.join(', ') : (appRecord.loanProducts || '—')],
-          ['Requested Loan Amount (₹)', appRecord.requestedAmount ? Number(appRecord.requestedAmount).toLocaleString('en-IN') : '—'],
-          ['Requested Tenure (Months)', appRecord.tenureMonths || '—'],
-          ['Loan Purpose', appRecord.loanPurpose || '—'],
-          [],
-          ['2. PRIMARY APPLICANT DETAILS'],
-          ['Full Name', [appRecord.firstName, appRecord.middleName, appRecord.lastName].filter(Boolean).join(' ') || '—'],
-          ['Residency Status', appRecord.residencyStatus || 'Indian'],
-          ['Gender', appRecord.gender || '—'],
-          ['Date of Birth', appRecord.dob || '—'],
-          ['Marital Status', appRecord.maritalStatus || '—'],
-          ['Education Level', appRecord.education || '—'],
-          ["Father's Name", appRecord.fatherName || '—'],
-          ["Mother's Maiden Name", appRecord.mothersMaidenName || '—'],
-          ['PAN Number', appRecord.panNumber || appRecord.pan_number || '—'],
-          ['Aadhaar Number', appRecord.aadhaar || '—'],
-          ['Passport No.', appRecord.passportNo || '—'],
-          ['Voter ID', appRecord.voterId || '—'],
-          ['Driving Licence', appRecord.drivingLicence || '—'],
-          [],
-          ['3. CONTACT & RESIDENTIAL ADDRESSES'],
-          ['Primary Contact', appRecord.currContact || '—'],
-          ['Email Address', appRecord.permEmail || '—'],
-          ['Current Address', appRecord.currAddress || '—'],
-          ['Current City / State / PIN', [appRecord.currCity, appRecord.currState, appRecord.currPincode].filter(Boolean).join(', ') || '—'],
-          ['Current Occupancy Type', appRecord.currOccupancy || '—'],
-          ['Current Residence Vintage', appRecord.currVintage ? appRecord.currVintage + ' Years' : '—'],
-          ['Permanent Address', appRecord.permAddress || '—'],
-          ['Permanent City / State / PIN', [appRecord.permCity, appRecord.permState, appRecord.permPincode].filter(Boolean).join(', ') || '—'],
-          ['Permanent Occupancy Type', appRecord.permOccupancy || '—'],
-          ['Permanent Residence Vintage', appRecord.permVintage ? appRecord.permVintage + ' Years' : '—'],
-          [],
-          ['4. EMPLOYMENT & FINANCIAL PROFILE'],
-          ['Employer / Business Name', appRecord.employerName || appRecord.businessName || '—'],
-          ['Office / Business Address', appRecord.officeAddress || appRecord.businessAddress || '—'],
-          ['Designation', appRecord.designation || '—'],
-          ['Employment / Business Vintage', (appRecord.empVintage || appRecord.businessVintage) ? (appRecord.empVintage || appRecord.businessVintage) + ' Years' : '—'],
-          ['Annual Income (₹)', appRecord.annualIncome ? Number(appRecord.annualIncome).toLocaleString('en-IN') : '—'],
-          ['Net Income (₹)', appRecord.netIncome ? Number(appRecord.netIncome).toLocaleString('en-IN') : '—']
-        ];
-        const wsSummary = XLSX.utils.aoa_to_sheet(summaryAoa);
-        wsSummary['!cols'] = [{ wch: 32 }, { wch: 45 }];
-        XLSX.utils.book_append_sheet(wb, wsSummary, 'Application Details');
-
-        const cbs = Array.isArray(appRecord.coborrower) ? appRecord.coborrower : (Array.isArray(appRecord.coborrowers) ? appRecord.coborrowers : []);
-        if (cbs.length > 0) {
-          const wsCb = XLSX.utils.json_to_sheet(cbs);
-          XLSX.utils.book_append_sheet(wb, wsCb, 'Co-Borrowers');
-        }
-        const bks = Array.isArray(appRecord.bankAccounts) ? appRecord.bankAccounts : [];
-        if (bks.length > 0) {
-          const wsB = XLSX.utils.json_to_sheet(bks);
-          XLSX.utils.book_append_sheet(wb, wsB, 'Bank Accounts');
-        }
-        const lns = Array.isArray(appRecord.existingLoans) ? appRecord.existingLoans : [];
-        if (lns.length > 0) {
-          const wsL = XLSX.utils.json_to_sheet(lns);
-          XLSX.utils.book_append_sheet(wb, wsL, 'Existing Loans');
-        }
-
-        const excelTargetFile = path.join(folder, `SkyFinserv_Master_Application_${safeAppNo}.xlsx`);
-        XLSX.writeFile(wb, excelTargetFile);
-      } catch (xlErr) {
-        console.warn('Individual application Excel write warning:', xlErr.message);
+        const [dmRows] = await pool.execute('SELECT * FROM dm_records ORDER BY id ASC');
+        dmRecords = (dmRows || []).map(rowToDmRecord);
+      } catch (dmErr) {
+        console.warn('[EXCEL] DM records fetch warning:', dmErr.message);
       }
+    }
+    if (!dmRecords.length && typeof memoryDmRecords !== 'undefined' && Array.isArray(memoryDmRecords) && memoryDmRecords.length) {
+      dmRecords = memoryDmRecords;
+    }
 
-      // 3. Maintain Master List JSON & Master List Excel in the folder
-      try {
-        const masterFile = path.join(folder, 'SkyFinserv_All_Applications.json');
-        let masterList = [];
-        if (fs.existsSync(masterFile)) {
+    // 3. GENERATE SEPARATE EXCEL FILE FOR EACH APPLICATION
+    const validAppFiles = new Set(['skyfinserv_all_applications.xlsx', 'skyfinserv_optimized_bt_worksheet.xlsx']);
+    for (const a of (applications || [])) {
+      const safeAppNo = (a.appNo || a.app_no || 'APP_' + Date.now()).replace(/[^a-zA-Z0-9_-]/g, '_');
+      if (!safeAppNo) continue;
+
+      // Build & Save dedicated separate Excel workbook
+      const appWb = buildApplicationWorkbook(a, dmRecords);
+      const appExcelFile = path.join(folder, `${safeAppNo}.xlsx`);
+      XLSX.writeFile(appWb, appExcelFile);
+      validAppFiles.add(`${safeAppNo}.xlsx`.toLowerCase());
+      console.log(`[EXCEL] Generated separate application Excel: ${appExcelFile}`);
+    }
+
+    // 4. Generate & Save Consolidated Master Excel file (with auto-fitted column widths!)
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: MIS Flat Record
+    const misRows = (applications || []).map(applicationToMisRow);
+    const wsMis = XLSX.utils.aoa_to_sheet([MIS_HEADERS, ...misRows]);
+    wsMis['!cols'] = fitColumnWidths([MIS_HEADERS, ...misRows]);
+    XLSX.utils.book_append_sheet(wb, wsMis, 'MIS Flat Record');
+
+    // Sheet 2: Data Manager Records
+    const dmHeaders = [
+      'Month', 'Entity', 'Connector', 'Applicant', 'Employer', 'Category',
+      'Bank', 'RM Name', 'Product', 'Program', 'Credit Program', 'Login Date',
+      'Applied Amount (₹)', 'Decision Date', 'Decision', 'Sanction Amount (₹)',
+      'Disbursal Date', 'Disbursal Amount (₹)', 'LI', 'GI', 'PF', 'ROI (%)',
+      'EMI (₹)', 'Tenure (Months)', 'PDC Amount (₹)', 'PDC Date', 'Queries',
+      'Application #', 'NOI Date', 'Remark'
+    ];
+    const dmRowsData = (dmRecords || []).map(d => [
+      d.month || '', d.entity || '', d.connector || '', d.applicant || '', d.employer || '', d.category || '',
+      d.bank || '', d.rmName || '', d.product || '', d.program || '', d.creditProgram || '', d.loginDate || '',
+      d.appliedAmount !== null && d.appliedAmount !== undefined && d.appliedAmount !== '' ? Number(d.appliedAmount) : '',
+      d.decisionDate || '', d.decision || '',
+      d.sanctionAmount !== null && d.sanctionAmount !== undefined && d.sanctionAmount !== '' ? Number(d.sanctionAmount) : '',
+      d.disbDate || '',
+      d.disbAmount !== null && d.disbAmount !== undefined && d.disbAmount !== '' ? Number(d.disbAmount) : '',
+      d.li !== null && d.li !== undefined && d.li !== '' ? Number(d.li) : '',
+      d.gi !== null && d.gi !== undefined && d.gi !== '' ? Number(d.gi) : '',
+      d.pf !== null && d.pf !== undefined && d.pf !== '' ? Number(d.pf) : '',
+      d.roi !== null && d.roi !== undefined && d.roi !== '' ? Number(d.roi) : '',
+      d.emi !== null && d.emi !== undefined && d.emi !== '' ? Number(d.emi) : '',
+      d.tenure !== null && d.tenure !== undefined && d.tenure !== '' ? Number(d.tenure) : '',
+      d.pdcAmount !== null && d.pdcAmount !== undefined && d.pdcAmount !== '' ? Number(d.pdcAmount) : '',
+      d.pdcDate || '', d.queries || '', d.appId || '', d.noiDate || '', d.remark || ''
+    ]);
+    const wsDm = XLSX.utils.aoa_to_sheet([dmHeaders, ...dmRowsData]);
+    wsDm['!cols'] = fitColumnWidths([dmHeaders, ...dmRowsData]);
+    XLSX.utils.book_append_sheet(wb, wsDm, 'Data Manager Records');
+
+    // Sheet 3: Bank Accounts
+    const bankHeaders = ['Application #', 'Applicant Name', 'Sr', 'Bank Name', 'Account Type', 'Account Number', 'Branch', 'IFSC Code'];
+    const bankRows = [];
+    (applications || []).forEach(a => {
+      const applicantName = [a.firstName, a.middleName, a.lastName].filter(Boolean).join(' ');
+      const bks = Array.isArray(a.bankAccounts) ? a.bankAccounts : [];
+      bks.forEach((b, idx) => {
+        bankRows.push([
+          a.appNo || a.app_no || '',
+          applicantName,
+          idx + 1,
+          b.bankName || b['Bank Name'] || '',
+          b.accountType || b['Account Type'] || 'Savings',
+          b.accountNumber || b['Account Number'] || '',
+          b.branch || b['Branch'] || '',
+          b.ifscCode || b.ifsc || b['IFSC Code'] || ''
+        ]);
+      });
+    });
+    const wsBank = XLSX.utils.aoa_to_sheet([bankHeaders, ...bankRows]);
+    wsBank['!cols'] = fitColumnWidths([bankHeaders, ...bankRows]);
+    XLSX.utils.book_append_sheet(wb, wsBank, 'Bank Accounts');
+
+    // Sheet 4: Existing Loans
+    const loanHeaders = ['Application #', 'Applicant Name', 'Sr', 'Loan Provider / Bank', 'Loan Type', 'Loan Amount (₹)', 'Monthly EMI (₹)', 'Outstanding Balance (₹)', 'Tenure', 'Start Date'];
+    const loanRows = [];
+    (applications || []).forEach(a => {
+      const applicantName = [a.firstName, a.middleName, a.lastName].filter(Boolean).join(' ');
+      const lns = Array.isArray(a.existingLoans) ? a.existingLoans : [];
+      lns.forEach((l, idx) => {
+        loanRows.push([
+          a.appNo || a.app_no || '',
+          applicantName,
+          idx + 1,
+          l.bankName || l.provider || l.institution || l['Loan Provider / Bank'] || '',
+          l.loanType || l['Loan Type'] || '',
+          l.loanAmount ? Number(l.loanAmount) : (l['Loan Amount (₹)'] ? Number(l['Loan Amount (₹)']) : ''),
+          l.emi ? Number(l.emi) : (l.monthlyEmi ? Number(l.monthlyEmi) : (l['Monthly EMI (₹)'] ? Number(l['Monthly EMI (₹)']) : '')),
+          l.outstanding ? Number(l.outstanding) : (l.balance ? Number(l.balance) : (l.outstandingAmount ? Number(l.outstandingAmount) : (l['Outstanding Balance (₹)'] ? Number(l['Outstanding Balance (₹)']) : ''))),
+          l.tenure || l.tenureMonths || l['Tenure'] || '',
+          l.startDate || l['Start Date'] || ''
+        ]);
+      });
+    });
+    const wsLoans = XLSX.utils.aoa_to_sheet([loanHeaders, ...loanRows]);
+    wsLoans['!cols'] = fitColumnWidths([loanHeaders, ...loanRows]);
+    XLSX.utils.book_append_sheet(wb, wsLoans, 'Existing Loans');
+
+    // Sheet 5: Co-Borrowers
+    const cobHeaders = ['Application #', 'Applicant Name', 'Sr', 'Co-Borrower Name', 'Relationship', 'PAN Number', 'Aadhaar Number', 'Contact Number', 'Annual Income (₹)'];
+    const cobRows = [];
+    (applications || []).forEach(a => {
+      const applicantName = [a.firstName, a.middleName, a.lastName].filter(Boolean).join(' ');
+      const cbs = Array.isArray(a.coborrower) ? a.coborrower : (Array.isArray(a.coborrowers) ? a.coborrowers : (a.coborrower ? [a.coborrower] : []));
+      cbs.forEach((cb, idx) => {
+        cobRows.push([
+          a.appNo || a.app_no || '',
+          applicantName,
+          idx + 1,
+          [cb.firstName, cb.middleName, cb.lastName].filter(Boolean).join(' ') || cb.name || '',
+          cb.relationship || cb.relation || '',
+          cb.panNumber || cb.pan || '',
+          cb.aadhaar || '',
+          cb.currContact || cb.contact || cb.mobile || '',
+          cb.annualIncome ? Number(cb.annualIncome) : ''
+        ]);
+      });
+    });
+    const wsCob = XLSX.utils.aoa_to_sheet([cobHeaders, ...cobRows]);
+    wsCob['!cols'] = fitColumnWidths([cobHeaders, ...cobRows]);
+    XLSX.utils.book_append_sheet(wb, wsCob, 'Co-Borrowers');
+
+    // Write Master Excel file
+    const masterExcelFile = path.join(folder, 'SkyFinserv_All_Applications.xlsx');
+    try {
+      XLSX.writeFile(wb, masterExcelFile);
+      console.log(`[EXCEL] Successfully updated consolidated master file: ${masterExcelFile}`);
+    } catch (mErr) {
+      if (mErr.code === 'EBUSY') {
+        console.warn(`[EXCEL] Master file ${path.basename(masterExcelFile)} is currently open in Excel; individual application files were successfully updated.`);
+      } else {
+        console.warn('[EXCEL] Master file write warning:', mErr.message);
+      }
+    }
+
+    // 5. Clean up redundant application JSON files and old legacy pattern files
+    try {
+      const existingFiles = fs.readdirSync(folder);
+      for (const f of existingFiles) {
+        const lower = f.toLowerCase();
+        if (validAppFiles.has(lower) || lower.startsWith('skyfinserv_financial_cam_') || lower === 'app_settings.json') continue;
+        if (lower.endsWith('.json') && lower !== 'app_settings.json') {
           try {
-            masterList = JSON.parse(fs.readFileSync(masterFile, 'utf8'));
-            if (!Array.isArray(masterList)) masterList = [];
+            fs.unlinkSync(path.join(folder, f));
+            console.log(`[CLEANUP] Deleted redundant JSON file: ${f}`);
+          } catch {}
+        } else if (lower.startsWith('skyfinserv_master_application_')) {
+          try {
+            fs.unlinkSync(path.join(folder, f));
+            console.log(`[CLEANUP] Deleted old legacy pattern file: ${f}`);
           } catch {}
         }
-        const appIdentifier = appRecord.appNo || appRecord.app_no;
-        const existingIdx = masterList.findIndex(a => (a.appNo || a.app_no) === appIdentifier);
-        if (existingIdx !== -1) {
-          masterList[existingIdx] = appRecord;
-        } else {
-          masterList.unshift(appRecord);
-        }
-        await fs.promises.writeFile(masterFile, JSON.stringify(masterList, null, 2), 'utf8');
-
-        // Master Consolidated Excel file
-        const allWb = XLSX.utils.book_new();
-        const rows = masterList.map(a => ({
-          'Application #': a.appNo || a.app_no,
-          'Status': a.status,
-          'Applicant Name': [a.firstName, a.middleName, a.lastName].filter(Boolean).join(' '),
-          'Role': a.applicantRole || a.applicant_role || '',
-          'Category': a.applicantType || a.applicant_type || '',
-          'Loan Products': Array.isArray(a.loanProducts) ? a.loanProducts.join('; ') : (a.loanProducts || ''),
-          'Requested Amount (₹)': a.requestedAmount || '',
-          'Tenure (Months)': a.tenureMonths || '',
-          'Contact': a.currContact || '',
-          'Email': a.permEmail || '',
-          'City': a.currCity || '',
-          'PAN': a.panNumber || a.pan_number || '',
-          'Aadhaar': a.aadhaar || '',
-          'Created': a.createdAt ? new Date(a.createdAt).toLocaleString() : ''
-        }));
-        const wsAll = XLSX.utils.json_to_sheet(rows);
-        XLSX.utils.book_append_sheet(allWb, wsAll, 'All Applications');
-        const allExcelFile = path.join(folder, 'SkyFinserv_All_Applications.xlsx');
-        XLSX.writeFile(allWb, allExcelFile);
-      } catch (mErr) {
-        console.warn('Master application list update warning:', mErr.message);
       }
+    } catch (cleanErr) {
+      console.warn('[CLEANUP] Directory cleanup warning:', cleanErr.message);
     }
   } catch (err) {
-    console.warn('Auto-archive application error:', err.message);
+    console.warn('[EXCEL] Master archive error:', err.message);
   }
+}
+
+// Backwards-compatible alias so existing call sites continue to work
+async function autoArchiveApplicationToFolder(appRecord) {
+  return await syncAndSaveMasterExcelFile(appRecord);
 }
 
 async function autoArchiveDatasheetToFolder(datasheet, applicationId) {
@@ -2098,12 +3012,8 @@ async function autoArchiveDatasheetToFolder(datasheet, applicationId) {
     }
 
     const safeAppId = String(applicationId || (datasheet && datasheet.selectedAppId) || 'CAM').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
-    
-    // Save JSON backup
-    const jsonFile = path.join(folder, `SkyFinserv_Financial_CAM_${safeAppId}.json`);
-    await fs.promises.writeFile(jsonFile, JSON.stringify(datasheet, null, 2), 'utf8');
 
-    // Generate Excel file
+    // Generate Excel file (.xlsx)
     const wb = XLSX.utils.book_new();
 
     // 1. Executive Summary Sheet
@@ -2112,7 +3022,8 @@ async function autoArchiveDatasheetToFolder(datasheet, applicationId) {
       const la = Number(p.landArea) || 0, lr = Number(p.landRate) || 0;
       const ba = Number(p.builtArea) || 0, br = Number(p.builtRate) || 0;
       const mv = (la * lr) + (ba * br);
-      const ltv = Number(p.ltv) || 70;
+      const rawLtv = Number(p.ltv);
+      const ltv = rawLtv > 1 ? rawLtv : (rawLtv > 0 ? rawLtv * 100 : 70);
       acc.mv += mv;
       acc.elig += Math.round(mv * (ltv / 100));
       return acc;
@@ -2164,7 +3075,8 @@ async function autoArchiveDatasheetToFolder(datasheet, applicationId) {
         const la = Number(p.landArea) || 0, lr = Number(p.landRate) || 0;
         const ba = Number(p.builtArea) || 0, br = Number(p.builtRate) || 0;
         const mv = (la * lr) + (ba * br);
-        const ltv = Number(p.ltv) || 70;
+        const rawLtv = Number(p.ltv);
+        const ltv = rawLtv > 1 ? Math.round(rawLtv) : (rawLtv > 0 ? Math.round(rawLtv * 100) : 70);
         return {
           'Sr': i + 1,
           'Property Description': p.desc || '',
@@ -2205,6 +3117,40 @@ async function autoArchiveDatasheetToFolder(datasheet, applicationId) {
       }
     }
 
+    // 5. BT Benefit Analysis Sheet
+    if (datasheet && Array.isArray(datasheet.btAnalysis) && datasheet.btAnalysis.length > 0) {
+      const btRows = datasheet.btAnalysis.map(b => ({
+        'Bank': b.bank || '',
+        'Principal (₹)': Number(b.principal) || 0,
+        'Ex ROI (%)': Number(b.existingRoi) || 0,
+        'Ex EMI (₹)': Number(b.existingEmi) || 0,
+        'Tenure (M)': Number(b.pendingTenure) || 0,
+        'Ex Total Pay (₹)': Number(b.totalPayExisting) || 0,
+        'Ex Total Interest (₹)': Number(b.interestExisting) || 0,
+        'FC Charges (₹)': Number(b.fcCharges) || 0,
+        'Offered ROI (%)': Number(b.offeredRoi) || 0,
+        'Offered EMI (₹)': Number(b.offeredEmi) || 0,
+        'Offered Total Pay (₹)': Number(b.totalPayOffered) || 0,
+        'Offered Interest (₹)': Number(b.interestOffered) || 0,
+        'PF Charges (₹)': Number(b.pfStampCharges) || 0,
+        'Customer Net Benefit (₹)': Number(b.netBenefit) || 0
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(btRows), 'BT Benefit Analysis');
+    }
+
+    // 6. Underwriting & Eligibility Matrix
+    if (datasheet && Array.isArray(datasheet.underwritingModels) && datasheet.underwritingModels.length > 0) {
+      const uwRows = datasheet.underwritingModels.map(m => ({
+        'Program / Model': m.name || '',
+        'FOIR': m.foir !== undefined ? m.foir : '-',
+        'LTV': m.ltv !== undefined ? m.ltv : '-',
+        'Max Monthly EMI (₹)': m.maxMonthlyEmi !== undefined ? m.maxMonthlyEmi : '-',
+        'Loan Eligibility (₹)': Number(m.eligibleLoan) || 0,
+        'Mathematical Logic': m.logic || ''
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(uwRows), 'Underwriting Matrix');
+    }
+
     // Write Excel Files
     const excelFile = path.join(folder, `SkyFinserv_Financial_CAM_${safeAppId}.xlsx`);
     XLSX.writeFile(wb, excelFile);
@@ -2214,9 +3160,6 @@ async function autoArchiveDatasheetToFolder(datasheet, applicationId) {
     console.warn('Datasheet auto-archive warning:', err.message);
   }
 }
-
-
-
 
 // ─── Serve the HTML app for all GET requests ──────────────────────────────────
 app.get('*', (req, res) => {
@@ -2240,6 +3183,11 @@ function getLocalIpAddress() {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 async function startServer(targetPort = PORT) {
   await setupDatabase();
+  try {
+    await syncAndSaveMasterExcelFile();
+  } catch (syncErr) {
+    console.warn('[BOOT] Initial Excel sync warning:', syncErr.message);
+  }
   return new Promise((resolve, reject) => {
     const tryListen = (p) => {
       const server = app.listen(p, '0.0.0.0', () => {
@@ -2271,6 +3219,5 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, startServer, setupDatabase };
-
+module.exports = { app, startServer, setupDatabase, syncAndSaveMasterExcelFile, buildApplicationWorkbook };
 

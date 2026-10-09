@@ -1,0 +1,1946 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>SkyFinserv — Financial Datasheet & Underwriting CAM Matrix</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --navy: #0D1B2A;
+      --navy2: #1A2E45;
+      --navy3: #243B55;
+      --gold: #F5A623;
+      --gold-deep: #D4881A;
+      --teal: #00B894;
+      --teal-deep: #00897B;
+      --blue: #2563EB;
+      --paper: #F4F6FA;
+      --slate: #4A5568;
+      --line: rgba(13, 27, 42, 0.12);
+      --font-display: 'Fraunces', Georgia, serif;
+      --font-body: 'Inter', system-ui, sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-body);
+      background: var(--paper);
+      color: var(--navy);
+    }
+
+    .topbar {
+      height: 64px;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+      color: #fff;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid var(--gold);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .fd-wrapper {
+      padding: 24px 32px 60px;
+    }
+
+    .fd-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .fd-title {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0 0 4px;
+    }
+
+    .fd-sub {
+      color: var(--slate);
+      font-size: 13px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-amber {
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-deep) 100%);
+      color: var(--navy);
+    }
+
+    .btn-primary {
+      background: var(--navy);
+      color: #fff;
+    }
+
+    .btn-success {
+      background: var(--teal);
+      color: #fff;
+    }
+
+    .btn-ghost {
+      background: #fff;
+      border: 1.5px solid var(--line);
+      color: var(--navy);
+    }
+
+    .fd-kpi-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .fd-kpi-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .fd-kpi-card:hover {
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .fd-kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: #94a3b8;
+    }
+
+    .fd-kpi-card.highlight::before {
+      background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+    }
+
+    .fd-kpi-card.yellow::before {
+      background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .fd-kpi-card .fd-kpi-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .fd-kpi-card .fd-kpi-val {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+      font-family: var(--font-mono);
+      letter-spacing: -0.02em;
+    }
+
+    .fd-kpi-card.highlight .fd-kpi-val {
+      color: #047857;
+    }
+
+    .fd-kpi-card.yellow .fd-kpi-val {
+      color: #b45309;
+    }
+
+    .fd-matrix-container {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      padding: 0;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+      overflow-x: auto;
+    }
+
+    .fd-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-family: var(--font-body);
+      font-size: 12.5px;
+      white-space: nowrap;
+    }
+
+    .fd-table th,
+    .fd-table td {
+      border-right: 1px solid #e2e8f0;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 6px 10px;
+      text-align: left;
+      vertical-align: middle;
+      transition: background-color 0.15s ease;
+    }
+
+    .fd-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .fd-header-role {
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+      color: #ffffff !important;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 13px;
+      text-align: center;
+      padding: 10px 14px !important;
+      border-bottom: 2px solid #0f172a !important;
+      letter-spacing: 0.02em;
+    }
+
+    .fd-header-role .fd-input {
+      color: #ffffff !important;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .fd-remove-btn {
+      border: none;
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      transition: all 0.15s ease;
+      margin-left: 6px;
+    }
+
+    .fd-remove-btn:hover {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    .fd-header-summary,
+    .fd-yellow-hdr {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
+      color: #78350f !important;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 12.5px;
+      text-align: center;
+      border-bottom: 2px solid #f59e0b !important;
+      letter-spacing: 0.03em;
+      padding: 10px 14px !important;
+    }
+
+    .fd-row-lbl {
+      background: #f8fafc !important;
+      font-weight: 600;
+      color: #334155;
+      width: 240px;
+      min-width: 240px;
+      position: sticky;
+      left: 0;
+      z-index: 10;
+      border-right: 2px solid #cbd5e1 !important;
+      box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.04);
+    }
+
+    tr:hover .fd-row-lbl {
+      background: #f1f5f9 !important;
+    }
+
+    th.fd-row-lbl {
+      background: #0f172a !important;
+      color: #f8fafc !important;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      top: 0;
+      z-index: 25;
+    }
+
+    .fd-entity-cell {
+      background: #f1f5f9;
+      text-align: center;
+    }
+
+    .fd-yellow-col {
+      background: #fffbeb !important;
+      text-align: right;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #78350f !important;
+      border-left: 1px solid #fde68a;
+    }
+
+    tr:hover .fd-yellow-col {
+      background: #fef3c7 !important;
+    }
+
+    .fd-input {
+      width: 100%;
+      font-family: var(--font-body);
+      font-size: 12.5px;
+      padding: 5px 8px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: #0f172a;
+      text-align: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .fd-input:hover {
+      border-color: #cbd5e1;
+      background: #ffffff;
+    }
+
+    .fd-input:focus {
+      border-color: #2563eb;
+      background: #ffffff;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .fd-num-input {
+      text-align: right;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .fd-negative {
+      color: #dc2626 !important;
+      font-weight: 700;
+    }
+
+    .fd-bold {
+      font-weight: 700;
+    }
+
+    .fd-itr-row td {
+      background: #e0e7ff !important;
+      color: #1e1b4b !important;
+      font-weight: 700;
+      border-bottom: 2px solid #c7d2fe !important;
+    }
+
+    .fd-subtotal-row td {
+      background: #ecfdf5 !important;
+      color: #065f46 !important;
+      font-weight: 700 !important;
+      border-top: 2px solid #10b981 !important;
+      border-bottom: 2px solid #10b981 !important;
+      font-size: 13px;
+    }
+
+    .fd-subtotal-row .fd-row-lbl {
+      background: #d1fae5 !important;
+      color: #065f46 !important;
+    }
+
+    .fd-table tbody tr:nth-child(even) td:not(.fd-row-lbl):not(.fd-yellow-col) {
+      background-color: #ffffff;
+    }
+
+    .fd-table tbody tr:nth-child(odd) td:not(.fd-row-lbl):not(.fd-yellow-col) {
+      background-color: #f8fafc;
+    }
+
+    .fd-table tbody tr:hover td:not(.fd-row-lbl):not(.fd-yellow-col) {
+      background-color: #edf2f7;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-title">SkyFinserv — Financial Underwriting Desk</div>
+    </div>
+    <div>
+      <a href="skyfinserv-app.html"
+        style="color:#fff;text-decoration:none;font-weight:600;font-size:13px;background:rgba(255,255,255,.15);padding:8px 16px;border-radius:8px;">←
+        Return to Main Portal</a>
+    </div>
+  </div>
+
+  <div class="fd-wrapper">
+    <div class="fd-header">
+      <div>
+        <h1 class="fd-title">📈 Financial Datasheet (CAM Assessment & Income Matrix)</h1>
+        <div class="fd-sub">Multi-applicant 3-year ITR assessment matrix with live 2-Yr Average & Considered Income
+          calculations.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-ghost" onclick="fdResetPreset()">⚡ Reset Matrix</button>
+        <button class="btn btn-success" onclick="fdSave()">💾 Save</button>
+        <button class="btn btn-amber" onclick="fdExportExcel()">⬇ Export Excel</button>
+        <label class="btn btn-ghost" style="cursor:pointer;margin:0;">📁 Import Excel <input type="file"
+            accept=".xlsx, .xls" style="display:none;" onchange="fdImportExcel(event)" /></label>
+        <button class="btn btn-ghost" onclick="window.print()">📄 Print / PDF</button>
+        <button class="btn btn-ghost" id="btn-toggle-underwriting" onclick="toggleUnderwritingSection()"
+          style="border:1.5px solid #cbd5e1;font-weight:700;">🔒 Underwriting (Private)</button>
+      </div>
+    </div>
+
+    <div class="fd-matrix-container" id="matrix-container"></div>
+  </div>
+
+  <script>
+    function defaultGstFirm(name = '', fy1 = '21-22', fy2 = '22-23') {
+      const months = ['April', 'May', 'Jun', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
+      return {
+        firmName: name,
+        fy1: fy1,
+        fy2: fy2,
+        months: months.map(m => ({ month: m, fy1: 0, fy2: 0 }))
+      };
+    }
+    window.defaultGstFirm = defaultGstFirm;
+
+    function defaultBlankDatasheet() {
+      return {
+        title: "Financial & Underwriting CAM Matrix",
+        caseRef: "",
+        dealSummary: {
+          totalSanctioned: 0, totalPos: 0, btPos: 0, collateralMarketValue: 0,
+          ltvEligibleLimit: 0, offeredFacility: 0, existingBtEmi: 0, offeredEmi: 0,
+          monthlyRelief: 0, liquiditySurplus: 0, netCustomerBenefit: 0
+        },
+        entities: [
+          {
+            role: "Applicant", name: "", proprietor: "", doj: "", vintage: "", employer: "", dob: "", age: "", businessAddress: "",
+            years: [
+              { date: "FY 2024-25", turnover: 0, netIncome: 0, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 },
+              { date: "FY 2023-24", turnover: 0, netIncome: 0, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 },
+              { date: "FY 2022-23", turnover: 0, netIncome: 0, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 }
+            ]
+          }
+        ],
+        loans: [],
+        gstDetailsList: [defaultGstFirm()],
+        activeGstIdx: 0,
+        propertyValuation: [],
+        btAnalysis: [],
+        loanPlanComparison: [],
+        underwritingModels: [
+          { name: "1. Loan Eligibility business or self emp.", foir: 0.60, ltv: "-", maxMonthlyEmi: 0, eligibleLoan: 0, logic: "Cashflow FOIR Method" },
+          { name: "2. Loan Eligibility Salaried.", foir: 0.60, ltv: "-", maxMonthlyEmi: 0, eligibleLoan: 0, logic: "Salaried FOIR Method" },
+          { name: "3. Loan Eligibility On EMI Base", foir: "-", ltv: "-", maxMonthlyEmi: 0, eligibleLoan: 0, logic: "Clean Track (1.2x Track Method)" },
+          { name: "4. Eligibility Based On GTP for Traders & service Provider", foir: 0.60, ltv: "-", maxMonthlyEmi: 0, eligibleLoan: 0, logic: "GTP Traders 5% Margin" },
+          { name: "5. Eligibility Based On GTP for Manufacturer", foir: 0.60, ltv: "-", maxMonthlyEmi: 0, eligibleLoan: 0, logic: "GTP Manufacturer 10% Margin" },
+          { name: "6. Bank Surrogate", foir: "-", ltv: "-", maxMonthlyEmi: 0, eligibleLoan: 0, logic: "ABB Surrogate Multiplier" },
+          { name: "7. LTV Eligibility (Property Collateral Net of POS)", foir: "-", ltv: 0.60, maxMonthlyEmi: "-", eligibleLoan: 0, logic: "LTV Collateral Net of POS" }
+        ]
+      };
+    }
+
+    let fdData = defaultBlankDatasheet();
+    try {
+      const saved = localStorage.getItem('sf_fd_standalone');
+      if (saved) {
+        if (saved.toLowerCase().includes('padiya') || saved.toLowerCase().includes('padia') || saved.toLowerCase().includes('govind')) {
+          localStorage.removeItem('sf_fd_standalone');
+        } else {
+          fdData = JSON.parse(saved);
+        }
+      }
+    } catch (e) { }
+
+    if (fdData && Array.isArray(fdData.entities) && fdData.entities.length === 2) {
+      const e1 = fdData.entities[0];
+      const e2 = fdData.entities[1];
+      if (e1 && e2 && e1.role === 'Applicant' && e2.role === 'Applicant' && (!e1.dob || !e1.age) && (e2.dob || e2.age)) {
+        fdData.entities = [{
+          role: 'Applicant',
+          name: e2.name || e1.name,
+          proprietor: e1.proprietor || '',
+          doj: e1.doj || e2.doj || '',
+          vintage: e1.vintage || e2.vintage || '',
+          employer: e1.employer || e2.employer || e1.name || '',
+          dob: e2.dob || e1.dob || '',
+          age: e2.age || e1.age || (e2.dob ? calcAgeFromDob(e2.dob) : (e1.dob ? calcAgeFromDob(e1.dob) : '')) || '',
+          businessAddress: e1.businessAddress || e2.businessAddress || '',
+          years: (e1.years && e1.years[0] && e1.years[0].turnover) ? e1.years : (e2.years || [])
+        }];
+      }
+    }
+
+    function calculateAge(dobInput) {
+      if (!dobInput) return null;
+      let d = null;
+      if (dobInput instanceof Date) {
+        d = dobInput;
+      } else if (typeof dobInput === 'string') {
+        const s = dobInput.trim();
+        if (!s) return null;
+        const delimiter = s.includes('-') ? '-' : (s.includes('/') ? '/' : null);
+        if (delimiter) {
+          const parts = s.split(delimiter);
+          if (parts.length === 3) {
+            if (parts[0].length === 4) {
+              d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            } else if (parts[2].length === 4) {
+              const months = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+              const p0 = parseInt(parts[0], 10);
+              const mon = isNaN(parts[1]) ? months[parts[1].toLowerCase().slice(0, 3)] : parseInt(parts[1], 10) - 1;
+              const yr = parseInt(parts[2], 10);
+              d = new Date(yr, mon, p0);
+            }
+          }
+        }
+        if (!d || isNaN(d.getTime())) {
+          d = new Date(s);
+        }
+      }
+      if (!d || isNaN(d.getTime())) return null;
+      const now = new Date();
+      let age = now.getFullYear() - d.getFullYear();
+      const m = now.getMonth() - d.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+      return (age >= 0 && age < 130) ? age : null;
+    }
+
+    function calcAgeFromDob(dobStr) {
+      const a = calculateAge(dobStr);
+      return a !== null ? String(a) : '';
+    }
+
+    function computeTotals(key) {
+      let considerSum = 0, yr1yr2Sum = 0;
+      fdData.entities.forEach(ent => {
+        const y1 = ent.years[0] ? Number(ent.years[0][key]) || 0 : 0;
+        const y2 = ent.years[1] ? Number(ent.years[1][key]) || 0 : 0;
+        considerSum += y1;
+        yr1yr2Sum += (y1 + y2);
+      });
+      return { considerSum, avg2yr: Math.round(yr1yr2Sum / 2) };
+    }
+
+    function computeLoanTotals() {
+      const loans = fdData.loans || [];
+      let totAmount = 0, totTenure = 0, totEmi = 0, totEmiPaid = 0, totOutstanding = 0, totOverdue = 0, totBounce = 0, totEmiObligation = 0, totBtEmi = 0, totBtAmount = 0;
+      loans.forEach(l => {
+        const amt = Number(l.amount) || 0;
+        const ten = Number(l.tenure) || 0;
+        const emi = Number(l.emi) || 0;
+        const paid = Number(l.emiPaid) || 0;
+        const out = Number(l.outstanding) || 0;
+        const ovd = Number(l.overdueCharges) || 0;
+        const bnc = Number(l.bounceCount) || 0;
+
+        const isObl = String(l.obligation || '').toLowerCase() === 'yes';
+        const isBt = String(l.bt || '').toLowerCase() === 'yes';
+
+        totAmount += amt;
+        totTenure += ten;
+        totEmi += emi;
+        totEmiPaid += paid;
+        totOutstanding += out;
+        totOverdue += ovd;
+        totBounce += bnc;
+        totEmiObligation += isObl ? emi : 0;
+        totBtEmi += isBt ? emi : 0;
+        totBtAmount += isBt ? out : 0;
+      });
+      return { totAmount, totTenure, totEmi, totEmiPaid, totOutstanding, totOverdue, totBounce, totEmiObligation, totBtEmi, totBtAmount };
+    }
+
+    function fdSyncLoanRowDOM(lIdx) {
+      if (!fdData.loans || !fdData.loans[lIdx]) return;
+      const l = fdData.loans[lIdx];
+      const isObl = String(l.obligation || '').toLowerCase() === 'yes';
+      const isBt = String(l.bt || '').toLowerCase() === 'yes';
+      const emiVal = Number(l.emi) || 0;
+      const outVal = Number(l.outstanding) || 0;
+
+      const emiOblVal = isObl ? emiVal : 0;
+      const btEmiVal = isBt ? emiVal : 0;
+      const btAmtVal = isBt ? outVal : 0;
+
+      const oblCell = document.getElementById(`fd-emi-obl-${lIdx}`);
+      if (oblCell) {
+        oblCell.innerText = isObl ? (emiOblVal ? formatNum(emiOblVal) : '-') : '-';
+        oblCell.style.color = isObl ? '#dc2626' : '#475569';
+      }
+      const btEmiCell = document.getElementById(`fd-bt-emi-${lIdx}`);
+      if (btEmiCell) btEmiCell.innerText = isBt ? (btEmiVal ? formatNum(btEmiVal) : '-') : '-';
+      const btAmtCell = document.getElementById(`fd-bt-amt-${lIdx}`);
+      if (btAmtCell) btAmtCell.innerText = isBt ? (btAmtVal ? formatNum(btAmtVal) : '-') : '-';
+
+      // Update footer totals
+      const totals = computeLoanTotals();
+      const elTotAmt = document.getElementById('fd-tot-loan-amt');
+      if (elTotAmt) elTotAmt.innerText = formatNum(totals.totAmount);
+      const elTotTen = document.getElementById('fd-tot-loan-tenure');
+      if (elTotTen) elTotTen.innerText = totals.totTenure || '-';
+      const elTotEmi = document.getElementById('fd-tot-loan-emi');
+      if (elTotEmi) elTotEmi.innerText = formatNum(totals.totEmi);
+      const elTotPaid = document.getElementById('fd-tot-loan-paid');
+      if (elTotPaid) elTotPaid.innerText = totals.totEmiPaid || '-';
+      const elTotOut = document.getElementById('fd-tot-loan-out');
+      if (elTotOut) elTotOut.innerText = formatNum(totals.totOutstanding);
+      const elTotOvd = document.getElementById('fd-tot-loan-overdue');
+      if (elTotOvd) elTotOvd.innerText = formatNum(totals.totOverdue);
+      const elTotBnc = document.getElementById('fd-tot-loan-bounce');
+      if (elTotBnc) elTotBnc.innerText = totals.totBounce || '-';
+      const elTotObl = document.getElementById('fd-tot-loan-obligation');
+      if (elTotObl) elTotObl.innerText = formatNum(totals.totEmiObligation);
+      const elTotBtEmi = document.getElementById('fd-tot-loan-bt-emi');
+      if (elTotBtEmi) elTotBtEmi.innerText = formatNum(totals.totBtEmi);
+      const elTotBtAmt = document.getElementById('fd-tot-loan-bt-amt');
+      if (elTotBtAmt) elTotBtAmt.innerText = formatNum(totals.totBtAmount);
+    }
+    window.fdSyncLoanRowDOM = fdSyncLoanRowDOM;
+
+    function fdUpdateLoanField(lIdx, field, val, liveOnly = false) {
+      if (!fdData.loans || !fdData.loans[lIdx]) return;
+      const l = fdData.loans[lIdx];
+      const numFields = ['amount', 'tenure', 'emi', 'emiPaid', 'outstanding', 'overdueCharges', 'bounceCount'];
+      if (numFields.includes(field)) {
+        const cleanStr = String(val).replace(/,/g, '').trim();
+        const num = cleanStr === '' ? '' : Number(cleanStr);
+        l[field] = isNaN(num) ? val : num;
+      } else {
+        l[field] = val;
+      }
+
+      if (liveOnly) {
+        fdSyncLoanRowDOM(lIdx);
+        return;
+      }
+      render();
+    }
+    window.fdUpdateLoanField = fdUpdateLoanField;
+
+    // Format any number/string into Indian comma formatted string: 00,00,000
+    function toIndianCommas(val) {
+      if (val === null || val === undefined || val === '') return '';
+      const str = String(val).replace(/[^0-9.]/g, '');
+      if (!str) return '';
+      const parts = str.split('.');
+      const intPart = parts[0];
+      const decPart = parts.length > 1 ? '.' + parts[1].slice(0, 2) : '';
+      if (!intPart) return decPart ? '0' + decPart : '';
+      const lastThree = intPart.slice(-3);
+      const otherNumbers = intPart.slice(0, -3);
+      const formatted = (otherNumbers !== '' ? otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' : '') + lastThree;
+      return formatted + decPart;
+    }
+    window.toIndianCommas = toIndianCommas;
+
+    function formatNum(val) {
+      if (val === undefined || val === null || val === '' || val === 0) return '-';
+      const num = Number(val);
+      if (isNaN(num)) return val;
+      if (num < 0) return `(${Math.abs(num).toLocaleString('en-IN')})`;
+      return num.toLocaleString('en-IN');
+    }
+
+    /* Debounced render – updates DOM only after user stops typing for 600ms */
+    let _debouncedRenderTimer = null;
+    function debouncedRender() {
+      clearTimeout(_debouncedRenderTimer);
+      _debouncedRenderTimer = setTimeout(() => render(), 600);
+    }
+
+    function fdUpdateEmiCalc(field, val) {
+      if (!fdData.emiCalculator) fdData.emiCalculator = {};
+      const num = val === '' ? '' : Number(val);
+      fdData.emiCalculator[field] = isNaN(num) ? val : num;
+      if (field === 'loanAmount' || field === 'roi' || field === 'tenureMonths') {
+        const ec = fdData.emiCalculator;
+        const P = Number(ec.loanAmount) || 0;
+        const annRoi = Number(ec.roi) || 0;
+        const n = Number(ec.tenureMonths) || 0;
+        if (P > 0 && annRoi > 0 && n > 0) {
+          const r = annRoi / 12 / 100;
+          ec.calculatedEmi = Math.round(P * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
+        } else if (P === 0 || annRoi === 0 || n === 0) {
+          ec.calculatedEmi = 0;
+        }
+        document.querySelectorAll('.cam-emi-calculated-val').forEach(el => {
+          el.value = ec.calculatedEmi || 0;
+        });
+      }
+      debouncedRender();
+    }
+    window.fdUpdateEmiCalc = fdUpdateEmiCalc;
+
+    /* ── GST Details Matrix Operations ── */
+    function computeGstTotals(firm) {
+      let totFy1 = 0;
+      let totFy2 = 0;
+      if (firm && Array.isArray(firm.months)) {
+        firm.months.forEach(m => {
+          totFy1 += (Number(m.fy1) || 0);
+          totFy2 += (Number(m.fy2) || 0);
+        });
+      }
+      return { totFy1, totFy2 };
+    }
+    window.computeGstTotals = computeGstTotals;
+
+    function fdUpdateGstField(field, val) {
+      if (!fdData.gstDetailsList) fdData.gstDetailsList = [defaultGstFirm()];
+      const idx = fdData.activeGstIdx || 0;
+      if (!fdData.gstDetailsList[idx]) fdData.gstDetailsList[idx] = defaultGstFirm();
+      fdData.gstDetailsList[idx][field] = val;
+      debouncedRender();
+    }
+    window.fdUpdateGstField = fdUpdateGstField;
+
+    function fdUpdateGstMonth(mIdx, fyKey, val, liveOnly = false) {
+      if (!fdData.gstDetailsList) fdData.gstDetailsList = [defaultGstFirm()];
+      const idx = fdData.activeGstIdx || 0;
+      const firm = fdData.gstDetailsList[idx] || (fdData.gstDetailsList[idx] = defaultGstFirm());
+      if (!firm.months || !firm.months[mIdx]) return;
+      const clean = String(val).replace(/,/g, '').trim();
+      const num = clean === '' ? 0 : Number(clean);
+      firm.months[mIdx][fyKey] = isNaN(num) ? 0 : num;
+
+      // Real-time calculation and DOM update for Total row
+      const totals = computeGstTotals(firm);
+      const elTot1 = document.getElementById('fd-gst-total-fy1');
+      const elTot2 = document.getElementById('fd-gst-total-fy2');
+      if (elTot1) {
+        elTot1.innerHTML = `<span style="position:absolute;top:0;left:0;width:0;height:0;border-top:5px solid #16a34a;border-right:5px solid transparent;"></span>` + (totals.totFy1 > 0 ? formatNum(totals.totFy1) : '-');
+      }
+      if (elTot2) {
+        elTot2.innerHTML = `<span style="position:absolute;top:0;left:0;width:0;height:0;border-top:5px solid #16a34a;border-right:5px solid transparent;"></span>` + (totals.totFy2 > 0 ? formatNum(totals.totFy2) : '-');
+      }
+
+      if (liveOnly) return;
+      debouncedRender();
+    }
+    window.fdUpdateGstMonth = fdUpdateGstMonth;
+
+    function fdAddGstFirm() {
+      if (!fdData.gstDetailsList) fdData.gstDetailsList = [defaultGstFirm()];
+      const count = fdData.gstDetailsList.length + 1;
+      fdData.gstDetailsList.push(defaultGstFirm(`Firm ${count}`));
+      fdData.activeGstIdx = fdData.gstDetailsList.length - 1;
+      render();
+    }
+    window.fdAddGstFirm = fdAddGstFirm;
+
+    function fdRemoveGstFirm(idx) {
+      if (!fdData.gstDetailsList) return;
+      if (fdData.gstDetailsList.length <= 1) return;
+      fdData.gstDetailsList.splice(idx, 1);
+      fdData.activeGstIdx = Math.max(0, (fdData.activeGstIdx || 0) - 1);
+      render();
+    }
+    window.fdRemoveGstFirm = fdRemoveGstFirm;
+
+    function fdSelectGstFirm(idx) {
+      fdData.activeGstIdx = Number(idx) || 0;
+      render();
+    }
+    window.fdSelectGstFirm = fdSelectGstFirm;
+
+    function render() {
+      const turnoverTot = computeTotals('turnover');
+      const netTot = computeTotals('netIncome');
+      const deprTot = computeTotals('depreciation');
+      const intTot = computeTotals('interest');
+      const rentTot = computeTotals('rent');
+      const addIncTot = computeTotals('addIncome');
+      const taxTot = computeTotals('taxPaid');
+
+      const loanTotals = computeLoanTotals();
+
+      // GST Details
+      const gstList = (fdData.gstDetailsList && Array.isArray(fdData.gstDetailsList) && fdData.gstDetailsList.length > 0)
+        ? fdData.gstDetailsList
+        : (fdData.gstDetails ? [fdData.gstDetails] : [defaultGstFirm()]);
+      if (!fdData.gstDetailsList) fdData.gstDetailsList = gstList;
+      const activeGstIdx = Math.min(Math.max(0, fdData.activeGstIdx || 0), gstList.length - 1);
+      const curGst = gstList[activeGstIdx] || defaultGstFirm();
+      const gstTotals = computeGstTotals(curGst);
+      const monthNames = ['April', 'May', 'Jun', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
+
+      const consideredCashflow = netTot.considerSum + deprTot.considerSum + intTot.considerSum + rentTot.considerSum + addIncTot.considerSum - taxTot.considerSum;
+      const avg2yrCashflow = netTot.avg2yr + deprTot.avg2yr + intTot.avg2yr + rentTot.avg2yr + addIncTot.avg2yr - taxTot.avg2yr;
+
+      const monthlyIncome = Math.round((avg2yrCashflow > 0 ? avg2yrCashflow : consideredCashflow) / 12);
+      const totalObligations = loanTotals.totEmiObligation;
+      const maxEmi = Math.max(0, Math.round((monthlyIncome * 0.5) - totalObligations));
+
+      if (!fdData.emiCalculator) fdData.emiCalculator = { loanAmount: '', roi: '', tenureMonths: '', calculatedEmi: '' };
+      const ec = fdData.emiCalculator;
+
+      let html = `
+      <div style="font-family:var(--font-display);font-weight:700;font-size:16px;margin:10px 0 10px;padding:10px 16px;background:linear-gradient(135deg, #1e293b 0%, #334155 100%);color:#ffffff;border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
+        <span>🏢 Section 1: Business Details & Multi-Entity Financial Matrix</span>
+        <button class="btn btn-primary" style="background:#fff;color:#1e293b;" onclick="fdAddEntity()">＋ Add Entity</button>
+      </div>
+
+      <div class="fd-matrix-container">
+      <table class="fd-table"><thead><tr><th class="fd-row-lbl" style="background:#fef08a !important;color:#854d0e !important;font-weight:800;font-size:13px;border-bottom:2px solid #facc15 !important;">Business Details</th>`;
+      fdData.entities.forEach((e, idx) => {
+        html += `<th colspan="3" class="fd-header-role">
+          <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+            <input class="fd-input fd-bold" style="text-align:center;" value="${e.role}" onchange="fdData.entities[${idx}].role=this.value;render()"/>
+            <button class="fd-remove-btn" title="Remove entity" onclick="fdData.entities.splice(${idx},1);render()">✕</button>
+          </div>
+        </th>`;
+      });
+      html += `
+        <th colspan="2" rowspan="6" style="vertical-align:top;padding:0;background:#ffffff;border-left:1.5px solid #000;border-bottom:1.5px solid #cbd5e1;min-width:250px;box-shadow:inset 0 0 4px rgba(0,0,0,0.03);">
+          <div class="fd-gst-box" style="width:100%;box-sizing:border-box;">
+            <table style="width:100%;border-collapse:collapse;border-spacing:0;font-family:var(--font-body);font-size:11.5px;border:1.5px solid #000;table-layout:fixed;">
+              <thead>
+                <tr>
+                  <th colspan="3" style="background:#fef08a;color:#000;font-weight:900;font-size:12px;padding:3px 6px;text-align:left;border-bottom:1.5px solid #000;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <span style="font-family:var(--font-display);letter-spacing:0.02em;">GST Details</span>
+                      <div style="display:flex;align-items:center;gap:4px;">
+                        ${gstList.length > 1 ? `
+                          <select style="font-size:10px;font-weight:700;padding:1px 3px;border:1px solid #000;background:#fff;border-radius:2px;" onchange="fdSelectGstFirm(this.value)">
+                            ${gstList.map((g, gIdx) => `<option value="${gIdx}" ${gIdx === activeGstIdx ? 'selected' : ''}>${escapeHtml(g.firmName || `Firm ${gIdx + 1}`)}</option>`).join('')}
+                          </select>
+                        ` : ''}
+                        <button type="button" onclick="fdAddGstFirm()" title="Add another firm GST" style="font-size:10px;font-weight:800;padding:1px 5px;background:#fff;color:#000;border:1px solid #000;border-radius:2px;cursor:pointer;">+ Firm</button>
+                        ${gstList.length > 1 ? `
+                          <button type="button" onclick="fdRemoveGstFirm(${activeGstIdx})" title="Delete current firm" style="font-size:11px;font-weight:800;color:#dc2626;background:none;border:none;cursor:pointer;padding:0 2px;">✕</button>
+                        ` : ''}
+                      </div>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th style="background:#b4c6e7;color:#1f3864;font-weight:800;font-size:11px;padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;width:72px;text-align:center;">
+                    Firm Name
+                  </th>
+                  <td colspan="2" style="background:#b4c6e7;padding:0 3px;border-bottom:1px solid #000;">
+                    <input class="fd-input fd-bold" style="padding:2px 4px;font-size:11.5px;color:#1e3a5f;background:transparent;" value="${escapeHtml(curGst.firmName || '')}" placeholder="Firm Name" onchange="fdUpdateGstField('firmName', this.value)"/>
+                  </td>
+                </tr>
+                <tr>
+                  <th style="background:#b4c6e7;color:#1f3864;font-weight:800;font-size:11px;padding:2px 4px;border-right:1px solid #000;border-bottom:1px solid #000;width:72px;text-align:center;">
+                    FY
+                  </th>
+                  <th style="background:#a6a6a6;color:#000;font-weight:800;font-size:11px;padding:1px 2px;border-right:1px solid #000;border-bottom:1px solid #000;text-align:center;">
+                    <input class="fd-input fd-bold" style="text-align:center;padding:1px;font-size:11px;color:#000;background:transparent;" value="${escapeHtml(curGst.fy1 || '21-22')}" onchange="fdUpdateGstField('fy1', this.value)"/>
+                  </th>
+                  <th style="background:#a6a6a6;color:#000;font-weight:800;font-size:11px;padding:1px 2px;border-bottom:1px solid #000;text-align:center;">
+                    <input class="fd-input fd-bold" style="text-align:center;padding:1px;font-size:11px;color:#000;background:transparent;" value="${escapeHtml(curGst.fy2 || '22-23')}" onchange="fdUpdateGstField('fy2', this.value)"/>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                ${monthNames.map((mName, mIdx) => {
+                  const mData = curGst.months && curGst.months[mIdx] ? curGst.months[mIdx] : { month: mName, fy1: 0, fy2: 0 };
+                  const v1 = mData.fy1;
+                  const v2 = mData.fy2;
+                  return `
+                  <tr>
+                    <td style="background:#b4c6e7;color:#1f3864;font-weight:800;font-size:11px;padding:1px 4px;border-right:1px solid #000;border-bottom:1px solid #000;text-align:center;">
+                      ${mName}
+                    </td>
+                    <td style="background:#bfbfbf;padding:0;border-right:1px solid #000;border-bottom:1px solid #000;">
+                      <input type="text" inputmode="numeric" class="fd-input fd-num-input" style="background:#bfbfbf;padding:1px 4px;font-size:11px;height:19px;font-weight:600;border-radius:0;color:#000;"
+                        value="${v1 ? toIndianCommas(v1) : ''}" placeholder=""
+                        oninput="this.value=toIndianCommas(this.value); fdUpdateGstMonth(${mIdx},'fy1',this.value.replace(/,/g,''),true);"
+                        onchange="fdUpdateGstMonth(${mIdx},'fy1',this.value.replace(/,/g,''),false);"/>
+                    </td>
+                    <td style="background:#bfbfbf;padding:0;border-bottom:1px solid #000;">
+                      <input type="text" inputmode="numeric" class="fd-input fd-num-input" style="background:#bfbfbf;padding:1px 4px;font-size:11px;height:19px;font-weight:600;border-radius:0;color:#000;"
+                        value="${v2 ? toIndianCommas(v2) : ''}" placeholder=""
+                        oninput="this.value=toIndianCommas(this.value); fdUpdateGstMonth(${mIdx},'fy2',this.value.replace(/,/g,''),true);"
+                        onchange="fdUpdateGstMonth(${mIdx},'fy2',this.value.replace(/,/g,''),false);"/>
+                    </td>
+                  </tr>`;
+                }).join('')}
+                <tr style="background:#fef08a;">
+                  <td style="background:#b4c6e7;color:#1f3864;font-weight:800;font-size:11.5px;padding:2px 4px;border-right:1px solid #000;text-align:center;">
+                    Total
+                  </td>
+                  <td id="fd-gst-total-fy1" style="background:#fef08a;color:#000;font-weight:800;font-size:11px;padding:2px 4px;border-right:1px solid #000;text-align:right;font-family:var(--font-mono);position:relative;">
+                    <span style="position:absolute;top:0;left:0;width:0;height:0;border-top:5px solid #16a34a;border-right:5px solid transparent;"></span>
+                    ${gstTotals.totFy1 > 0 ? formatNum(gstTotals.totFy1) : '-'}
+                  </td>
+                  <td id="fd-gst-total-fy2" style="background:#fef08a;color:#000;font-weight:800;font-size:11px;padding:2px 4px;text-align:right;font-family:var(--font-mono);position:relative;">
+                    <span style="position:absolute;top:0;left:0;width:0;height:0;border-top:5px solid #16a34a;border-right:5px solid transparent;"></span>
+                    ${gstTotals.totFy2 > 0 ? formatNum(gstTotals.totFy2) : '-'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </th>
+      </tr>`;
+
+      // Name row (Company / Firm Name)
+      html += `<tr><td class="fd-row-lbl">Company / Firm Name</td>`;
+      fdData.entities.forEach((e, idx) => {
+        html += `<td colspan="3" class="fd-entity-cell fd-bold"><input class="fd-input fd-bold" style="text-align:center;" value="${e.name}" onchange="fdData.entities[${idx}].name=this.value;render()"/></td>`;
+      });
+      html += `</tr>`;
+
+      // Proprietor / Partner Name row
+      html += `<tr><td class="fd-row-lbl">Proprietor / Partner Name</td>`;
+      fdData.entities.forEach((e, idx) => {
+        html += `<td colspan="3" class="fd-entity-cell"><input class="fd-input" style="text-align:center;" value="${e.proprietor || ''}" onchange="fdData.entities[${idx}].proprietor=this.value;render()"/></td>`;
+      });
+      html += `</tr>`;
+
+      // DOJ / Vintage row
+      html += `<tr><td class="fd-row-lbl">DOJ / Vintage in Yrs</td>`;
+      fdData.entities.forEach((e, idx) => {
+        html += `<td colspan="2" class="fd-entity-cell"><input class="fd-input" style="text-align:center;" value="${e.doj}" onchange="fdData.entities[${idx}].doj=this.value;render()"/></td>
+        <td class="fd-entity-cell fd-bold" style="width:60px;text-align:center;"><input class="fd-input fd-bold" style="text-align:center;color:#dc2626;font-weight:800;font-size:13.5px;" value="${e.vintage}" onchange="fdData.entities[${idx}].vintage=this.value;render()"/></td>`;
+      });
+      html += `</tr>`;
+
+      // Employer row
+      html += `<tr><td class="fd-row-lbl">Business/Employer Name</td>`;
+      fdData.entities.forEach((e, idx) => {
+        html += `<td colspan="3" class="fd-entity-cell"><input class="fd-input" style="text-align:center;" value="${e.employer}" onchange="fdData.entities[${idx}].employer=this.value;render()"/></td>`;
+      });
+      html += `</tr>`;
+
+      // DOB / Age row
+      html += `<tr><td class="fd-row-lbl">DOB / Age in yrs</td>`;
+      fdData.entities.forEach((e, idx) => {
+        html += `<td colspan="2" class="fd-entity-cell"><input class="fd-input fd-bold" style="text-align:center;color:#dc2626;font-weight:800;font-size:12.5px;" value="${e.dob}" onchange="fdData.entities[${idx}].dob=this.value; const a = calcAgeFromDob(this.value); if(a) fdData.entities[${idx}].age=a; render()"/></td>
+        <td class="fd-entity-cell fd-bold" style="width:60px;text-align:center;"><input class="fd-input fd-bold" style="text-align:center;color:#0f172a;font-weight:800;font-size:13.5px;" value="${e.age}" onchange="fdData.entities[${idx}].age=this.value;render()"/></td>`;
+      });
+      html += `</tr>`;
+
+      // ITR Date Row
+      html += `<tr class="fd-itr-row"><td class="fd-row-lbl" style="background:#bfdbfe !important;color:#1e3a5f !important;font-weight:700;">ITR/Salary DATE</td>`;
+      fdData.entities.forEach((e, eIdx) => {
+        e.years.forEach((y, yIdx) => {
+          html += `<td style="text-align:center;font-weight:700;min-width:95px;"><input class="fd-input fd-bold" style="text-align:center;" value="${y.date}" onchange="fdData.entities[${eIdx}].years[${yIdx}].date=this.value;render()"/></td>`;
+        });
+      });
+      html += `<td class="fd-yellow-col fd-bold" style="text-align:center;background:#bfdbfe !important;color:#1e3a5f !important;font-weight:700;">Consider Income</td><td class="fd-yellow-col fd-bold" style="text-align:center;background:#bfdbfe !important;color:#1e3a5f !important;font-weight:700;">Average of 2yr</td></tr></thead><tbody>`;
+
+      const numRows = [
+        { label: 'Turnover', key: 'turnover', totals: turnoverTot },
+        { label: 'Net Business/salary income', key: 'netIncome', totals: netTot },
+        { label: 'Depreciation', key: 'depreciation', totals: deprTot },
+        { label: 'Interest paid to bank/ partner', key: 'interest', totals: intTot },
+        { label: 'Rent Received', key: 'rent', totals: rentTot },
+        { label: 'Additional income / Remuneration', key: 'addIncome', totals: addIncTot },
+        { label: 'Tax PAID', key: 'taxPaid', totals: taxTot },
+      ];
+
+      numRows.forEach(nr => {
+        html += `<tr><td class="fd-row-lbl">${nr.label}</td>`;
+        fdData.entities.forEach((e, eIdx) => {
+          e.years.forEach((y, yIdx) => {
+            const val = y[nr.key];
+            const isNeg = val < 0;
+            html += `<td class="fd-num-input ${isNeg ? 'fd-negative' : ''}"><input class="fd-input fd-num-input ${isNeg ? 'fd-negative' : ''}" value="${val ? toIndianCommas(val) : ''}" placeholder="-" oninput="this.value=toIndianCommas(this.value);fdData.entities[${eIdx}].years[${yIdx}]['${nr.key}']=Number(this.value.replace(/,/g,''))||0;debouncedRender()"/></td>`;
+          });
+        });
+        html += `<td class="fd-yellow-col ${nr.totals.considerSum < 0 ? 'fd-negative' : ''}">${formatNum(nr.totals.considerSum)}</td><td class="fd-yellow-col ${nr.totals.avg2yr < 0 ? 'fd-negative' : ''}">${formatNum(nr.totals.avg2yr)}</td></tr>`;
+      });
+
+      html += `<tr class="fd-subtotal-row"><td class="fd-row-lbl">Gross Cashflow Subtotal</td>`;
+      fdData.entities.forEach(e => {
+        e.years.forEach(y => {
+          const cf = (y.netIncome || 0) + (y.depreciation || 0) + (y.interest || 0) + (y.rent || 0) + (y.addIncome || 0) - (y.taxPaid || 0);
+          html += `<td class="fd-num-input fd-bold">${formatNum(cf)}</td>`;
+        });
+      });
+      html += `<td class="fd-yellow-col fd-bold">${formatNum(consideredCashflow)}</td><td class="fd-yellow-col fd-bold">${formatNum(avg2yrCashflow)}</td></tr>`;
+
+      html += `</tbody></table>`;
+
+      // Loan Details Section
+      html += `
+      <div style="font-family:var(--font-display);font-weight:700;font-size:16px;margin:32px 0 10px;padding:10px 16px;background:linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);color:#78350f;border-left:5px solid #f59e0b;border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
+        <span>💳 Loan Details (Existing Loan Obligations & Balance Transfer Matrix)</span>
+        <button class="btn btn-primary" onclick="fdAddLoanRow()">＋ Add Loan</button>
+      </div>
+
+      <table class="fd-table">
+        <thead>
+          <tr style="background:#1e293b;color:#fff;">
+            <th style="background:#1e293b;color:#fff;">Loan belongs to</th>
+            <th style="background:#1e293b;color:#fff;">Loan Provider</th>
+            <th style="background:#1e293b;color:#fff;">Type</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">Amount</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">Tenur</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">Loan/ EMI Start Date</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">EMI / Interest</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">No. of EMI Paid</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">Outstanding Amount</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">Over due charges</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">No. Bounce</th>
+            <th style="background:#f59e0b;color:#78350f;text-align:center;">Obligation</th>
+            <th style="background:#f59e0b;color:#78350f;text-align:right;">EMI obligation</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">BT</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">BT EMI</th>
+            <th style="background:#1e293b;color:#fff;text-align:right;">BT Amount</th>
+            <th style="background:#334155;color:#fff;">EMI Reflected in</th>
+            <th style="background:#1e293b;color:#fff;text-align:center;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(fdData.loans || []).map((l, lIdx) => {
+        const isObl = String(l.obligation || '').toLowerCase() === 'yes';
+        const isBt = String(l.bt || '').toLowerCase() === 'yes';
+        const emiOblVal = isObl ? (l.emiObligation !== undefined && l.emiObligation !== '' ? Number(l.emiObligation) : Number(l.emi || 0)) : 0;
+        const btEmiVal = isBt ? (l.btEmi !== undefined && l.btEmi !== '' ? Number(l.btEmi) : Number(l.emi || 0)) : 0;
+        const btAmtVal = isBt ? (l.btAmount !== undefined && l.btAmount !== '' ? Number(l.btAmount) : Number(l.outstanding || 0)) : 0;
+        const isYellow = l.outstanding == 9627863 || String(l.loanProvider || '').toLowerCase().includes('bajaj');
+
+        return `
+            <tr style="${isYellow ? 'background:#fef9c3;' : ''}">
+              <td><input class="fd-input" value="${l.loanBelongsTo || ''}" placeholder="Borrower name" oninput="fdUpdateLoanField(${lIdx},'loanBelongsTo',this.value,true)"/></td>
+              <td><input class="fd-input fd-bold" value="${l.loanProvider || ''}" placeholder="Bank / NBFC" oninput="fdUpdateLoanField(${lIdx},'loanProvider',this.value,true)"/></td>
+              <td><input class="fd-input" value="${l.type || ''}" placeholder="Type" oninput="fdUpdateLoanField(${lIdx},'type',this.value,true)"/></td>
+              <td><input class="fd-input fd-num-input" value="${l.amount ? toIndianCommas(l.amount) : ''}" placeholder="0" oninput="this.value=toIndianCommas(this.value);fdUpdateLoanField(${lIdx},'amount',this.value.replace(/,/g,''),true)"/></td>
+              <td style="width:70px;text-align:center;"><input class="fd-input" style="text-align:center;" value="${l.tenure !== undefined ? l.tenure : ''}" placeholder="Months" oninput="fdUpdateLoanField(${lIdx},'tenure',this.value,true)"/></td>
+              <td style="width:110px;text-align:center;"><input class="fd-input" style="text-align:center;" value="${l.startDate || ''}" placeholder="DD-MM-YYYY" oninput="fdUpdateLoanField(${lIdx},'startDate',this.value,true)"/></td>
+              <td><input class="fd-input fd-num-input" value="${l.emi ? toIndianCommas(l.emi) : ''}" placeholder="0" oninput="this.value=toIndianCommas(this.value);fdUpdateLoanField(${lIdx},'emi',this.value.replace(/,/g,''),true)"/></td>
+              <td style="width:80px;text-align:center;"><input class="fd-input" style="text-align:center;" value="${l.emiPaid !== undefined ? l.emiPaid : ''}" placeholder="-" oninput="fdUpdateLoanField(${lIdx},'emiPaid',this.value,true)"/></td>
+              <td style="${isYellow ? 'background:#fde047;font-weight:700;' : ''}"><input class="fd-input fd-num-input fd-bold" value="${l.outstanding ? toIndianCommas(l.outstanding) : ''}" placeholder="0" oninput="this.value=toIndianCommas(this.value);fdUpdateLoanField(${lIdx},'outstanding',this.value.replace(/,/g,''),true)"/></td>
+              <td><input class="fd-input fd-num-input" value="${l.overdueCharges ? toIndianCommas(l.overdueCharges) : ''}" placeholder="-" oninput="this.value=toIndianCommas(this.value);fdUpdateLoanField(${lIdx},'overdueCharges',this.value.replace(/,/g,''),true)"/></td>
+              <td style="width:80px;text-align:center;"><input class="fd-input" style="text-align:center;font-weight:700;color:#dc2626;" value="${l.bounceCount !== undefined ? l.bounceCount : ''}" placeholder="-" oninput="fdUpdateLoanField(${lIdx},'bounceCount',this.value,true)"/></td>
+
+              <td style="text-align:center;background:#fffbe0;">
+                <select class="fd-input fd-bold" style="text-align:center;color:${isObl ? '#dc2626' : '#64748b'};" onchange="fdData.loans[${lIdx}].obligation=this.value;render()">
+                  <option value="yes" ${isObl ? 'selected' : ''}>yes</option>
+                  <option value="No" ${!isObl ? 'selected' : ''}>No</option>
+                </select>
+              </td>
+
+              <td class="fd-yellow-col fd-bold" id="fd-emi-obl-${lIdx}" style="text-align:right;color:${isObl ? '#dc2626' : '#475569'}; font-family:var(--font-mono);font-size:13px;padding:6px 10px;">
+                ${isObl ? (emiOblVal ? formatNum(emiOblVal) : '-') : '-'}
+              </td>
+
+              <td style="text-align:center;">
+                <select class="fd-input" style="text-align:center;" onchange="fdData.loans[${lIdx}].bt=this.value;render()">
+                  <option value="No" ${!isBt ? 'selected' : ''}>No</option>
+                  <option value="yes" ${isBt ? 'selected' : ''}>yes</option>
+                </select>
+              </td>
+
+              <td id="fd-bt-emi-${lIdx}" style="text-align:right;font-family:var(--font-mono);font-size:13px;padding:6px 10px;">${isBt ? (btEmiVal ? formatNum(btEmiVal) : '-') : '-'}</td>
+              <td id="fd-bt-amt-${lIdx}" style="text-align:right;font-family:var(--font-mono);font-size:13px;padding:6px 10px;">${isBt ? (btAmtVal ? formatNum(btAmtVal) : '-') : '-'}</td>
+
+              <td><input class="fd-input" value="${l.emiReflectedIn || ''}" placeholder="Account ref" oninput="fdUpdateLoanField(${lIdx},'emiReflectedIn',this.value,true)"/></td>
+              <td style="text-align:center;">
+                <button class="fd-remove-btn" title="Delete Loan Row" onclick="fdData.loans.splice(${lIdx},1);render()">✕</button>
+              </td>
+            </tr>`;
+      }).join('')}
+
+          <tr style="background:#fef3c7;font-weight:700;border-top:2px solid #f59e0b;font-family:var(--font-mono);">
+            <td style="font-weight:800;color:#78350f;">Total</td>
+            <td></td>
+            <td></td>
+            <td id="fd-tot-loan-amt" style="text-align:right;">${formatNum(loanTotals.totAmount)}</td>
+            <td id="fd-tot-loan-tenure" style="text-align:center;">${loanTotals.totTenure || '-'}</td>
+            <td></td>
+            <td id="fd-tot-loan-emi" style="text-align:right;">${formatNum(loanTotals.totEmi)}</td>
+            <td id="fd-tot-loan-paid" style="text-align:center;">${loanTotals.totEmiPaid || '-'}</td>
+            <td id="fd-tot-loan-out" style="text-align:right;">${formatNum(loanTotals.totOutstanding)}</td>
+            <td id="fd-tot-loan-overdue" style="text-align:right;">${formatNum(loanTotals.totOverdue)}</td>
+            <td id="fd-tot-loan-bounce" style="text-align:center;color:#dc2626;">${loanTotals.totBounce || '-'}</td>
+            <td style="text-align:center;color:#dc2626;">No</td>
+            <td id="fd-tot-loan-obligation" style="text-align:right;color:#dc2626;font-size:13.5px;">${formatNum(loanTotals.totEmiObligation)}</td>
+            <td style="text-align:center;">-</td>
+            <td id="fd-tot-loan-bt-emi" style="text-align:right;">${formatNum(loanTotals.totBtEmi)}</td>
+            <td id="fd-tot-loan-bt-amt" style="text-align:right;">${formatNum(loanTotals.totBtAmount)}</td>
+            <td></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>`;
+
+      /* ── 3. Executive KPI Cards ── */
+      const deal = fdData.dealSummary || {};
+      const kpiBarHtml = `
+      <div class="fd-kpi-bar" style="margin-bottom:20px;">
+        <div class="fd-kpi-card" style="border-left:4px solid #2563eb;">
+          <div class="fd-kpi-label">Total Debt Portfolio</div>
+          <div class="fd-kpi-val" style="color:#1e3a5f;">${formatNum(deal.totalSanctioned || 88238559)}</div>
+          <div class="fd-kpi-sub">POS: ${formatNum(deal.totalPos || 68001823)}</div>
+        </div>
+        <div class="fd-kpi-card" style="border-left:4px solid #059669;">
+          <div class="fd-kpi-label">BT Takeover POS</div>
+          <div class="fd-kpi-val" style="color:#059669;">${formatNum(deal.btPos || 38937424)}</div>
+          <div class="fd-kpi-sub">6 Loans Consolidated</div>
+        </div>
+        <div class="fd-kpi-card" style="border-left:4px solid #d97706;">
+          <div class="fd-kpi-label">Assessed Collateral Value</div>
+          <div class="fd-kpi-val" style="color:#b45309;">${formatNum(deal.collateralMarketValue || 63372500)}</div>
+          <div class="fd-kpi-sub">LTV Limit (70%): ${formatNum(deal.ltvEligibleLimit || 44360750)}</div>
+        </div>
+        <div class="fd-kpi-card" style="border-left:4px solid #4f46e5;">
+          <div class="fd-kpi-label">Monthly EMI Relief</div>
+          <div class="fd-kpi-val" style="color:#4f46e5;">${formatNum(deal.monthlyRelief || 391984)}</div>
+          <div class="fd-kpi-sub">Ex: ${formatNum(deal.existingBtEmi || 835234)} → New: ${formatNum(deal.offeredEmi || 443250)}</div>
+        </div>
+        <div class="fd-kpi-card" style="border-left:4px solid #10b981;background:#f0fdf4;">
+          <div class="fd-kpi-label">Customer Net Benefit</div>
+          <div class="fd-kpi-val" style="color:#047857;font-weight:900;">${formatNum(deal.netCustomerBenefit || 3549251)}</div>
+          <div class="fd-kpi-sub" style="color:#059669;font-weight:700;">Net Interest Saved After All Charges</div>
+        </div>
+      </div>
+      `;
+
+      // ── 3. Property Valuation & Collateral LTV Matrix ──
+      const props = fdData.propertyValuation || [];
+      const totLandArea = props.reduce((s, p) => s + (Number(p.area) || 0), 0);
+      const totLandVal = props.reduce((s, p) => s + ((Number(p.area) || 0) * (Number(p.rate) || 0)), 0);
+      const totBuiltArea = props.reduce((s, p) => s + (Number(p.constructionArea) || 0), 0);
+      const totBuiltVal = props.reduce((s, p) => s + ((Number(p.constructionArea) || 0) * (Number(p.constructionRate) || 0)), 0);
+      const totMktVal = props.reduce((s, p) => s + (Number(p.totalValue) || 0), 0);
+      const totEligLoan = props.reduce((s, p) => s + (Number(p.eligible) || 0), 0);
+
+      html += `
+      <!-- Section 3: Property Valuation & Collateral Assessment -->
+      <div style="font-family:var(--font-display);font-weight:700;font-size:16px;margin: 16px 0 8px;padding:10px 16px;background:linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);color:#ffffff;border-radius:8px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 4px rgba(0,0,0,0.08);">
+        <span>🏠 Section 3: Property Valuation & Collateral LTV Assessment</span>
+        <button class="btn btn-ghost btn-sm" style="background:#fff;color:#1e3a5f;" onclick="fdAddPropertyRow()">＋ Add Property</button>
+      </div>
+
+      <div class="fd-matrix-container" style="overflow-x:auto;">
+        <table class="fd-table">
+          <thead>
+            <tr style="background:#1e3a5f;color:#fff;">
+              <th style="min-width:140px;">Property Type</th>
+              <th style="min-width:140px;">Property Owner</th>
+              <th style="text-align:right;">Area (sqft)</th>
+              <th style="text-align:right;">Buildeup Area</th>
+              <th style="text-align:right;">Rate (₹)</th>
+              <th style="text-align:right;">Const. Rate</th>
+              <th style="text-align:right;background:#1e293b;">Total Value</th>
+              <th style="text-align:center;">LTV %</th>
+              <th style="text-align:right;background:#065f46;">Eligible (₹)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${props.map((p, pIdx) => {
+        const lVal = (Number(p.area) || 0) * (Number(p.rate) || 0);
+        const bVal = (Number(p.constructionArea) || 0) * (Number(p.constructionRate) || 0);
+        const tmv = Number(p.totalValue) || (lVal + bVal);
+        const eVal = Number(p.eligible) || 0;
+        const rawLtv = Number(p.ltv);
+        const dispLtv = (tmv > 0 && eVal > 0)
+          ? Math.round((eVal / tmv) * 100)
+          : (p.ltv !== undefined && p.ltv !== '' ? (rawLtv <= 1 && rawLtv > 0 ? Math.round(rawLtv * 100) : Math.round(rawLtv)) : 70);
+        const ltvFactor = dispLtv > 1 ? dispLtv / 100 : (dispLtv > 0 ? dispLtv : 0.70);
+        const elig = Number(p.eligible) || Math.round(tmv * ltvFactor);
+        return `
+              <tr>
+                <td><input class="fd-input fd-bold" value="${p.propertyType || p.label || ''}" placeholder="Property Type" oninput="fdUpdatePropertyField(${pIdx},'propertyType',this.value)"/></td>
+                <td><input class="fd-input" value="${p.owner || ''}" placeholder="Property Owner" oninput="fdUpdatePropertyField(${pIdx},'owner',this.value)"/></td>
+                <td><input class="fd-input fd-num-input" value="${p.area || ''}" placeholder="0" oninput="fdUpdatePropertyField(${pIdx},'area',this.value)"/></td>
+                <td><input class="fd-input fd-num-input" value="${p.constructionArea || ''}" placeholder="0" oninput="fdUpdatePropertyField(${pIdx},'constructionArea',this.value)"/></td>
+                <td><input class="fd-input fd-num-input" value="${p.rate || ''}" placeholder="0" oninput="fdUpdatePropertyField(${pIdx},'rate',this.value)"/></td>
+                <td><input class="fd-input fd-num-input" value="${p.constructionRate || ''}" placeholder="0" oninput="fdUpdatePropertyField(${pIdx},'constructionRate',this.value)"/></td>
+                <td style="text-align:right;font-family:var(--font-mono);font-weight:800;background:#f8fafc;color:#1e3a5f;"><input class="fd-input fd-num-input fd-bold" value="${p.totalValue !== undefined ? p.totalValue : ''}" placeholder="0" oninput="fdUpdatePropertyField(${pIdx},'totalValue',this.value)"/></td>
+                <td style="text-align:center;">
+                  <div style="display:inline-flex;align-items:center;justify-content:center;gap:2px;">
+                    <input class="fd-input" style="text-align:right;width:45px;font-family:var(--font-mono);font-weight:700;" value="${dispLtv}" placeholder="70" oninput="fdUpdatePropertyField(${pIdx},'ltv',this.value)"/>
+                    <span style="font-weight:700;color:#1e3a5f;font-size:12px;">%</span>
+                  </div>
+                </td>
+                <td style="text-align:right;font-family:var(--font-mono);font-weight:800;color:#047857;background:#f0fdf4;"><input class="fd-input fd-num-input fd-bold" style="background:#f0fdf4;color:#047857;" value="${p.eligible !== undefined && p.eligible !== '' ? p.eligible : elig}" placeholder="0" oninput="fdUpdatePropertyField(${pIdx},'eligible',this.value)"/></td>
+                <td style="text-align:center;"><button class="fd-remove-btn" onclick="fdRemovePropertyRow(${pIdx})">✕</button></td>
+              </tr>
+              `;
+      }).join('')}
+            ${(() => {
+          const totArea = props.reduce((s, p) => s + (Number(p.area) || 0), 0);
+          const totBuilt = props.reduce((s, p) => s + (Number(p.constructionArea) || 0), 0);
+          const totLtv = (totMktVal > 0 && totEligLoan > 0) ? Math.round((totEligLoan / totMktVal) * 100) : 0;
+          return `
+            <tr style="background:#f0f9ff;font-weight:700;border-top:2px solid #2563eb;font-family:var(--font-mono);">
+              <td style="font-weight:800;color:#1e3a5f;">TOTAL COLLATERAL ELIGIBILITY</td>
+              <td></td>
+              <td style="text-align:right;">${formatNum(totArea)}</td>
+              <td style="text-align:right;">${formatNum(totBuilt)}</td>
+              <td></td>
+              <td></td>
+              <td style="text-align:right;font-weight:800;color:#1e3a5f;">${formatNum(totMktVal)}</td>
+              <td style="text-align:center;font-weight:800;color:#1e3a5f;">${totLtv ? totLtv + ' %' : '-'}</td>
+              <td style="text-align:right;font-weight:800;color:#047857;font-size:13.5px;">${formatNum(totEligLoan)}</td>
+              <td></td>
+            </tr>`;
+        })()}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Section 4: BT Benefit Analysis & Savings Matrix -->
+      <div style="font-family:var(--font-display);font-weight:700;font-size:16px;margin: 16px 0 8px;padding:10px 16px;background:linear-gradient(135deg, #065f46 0%, #059669 100%);color:#ffffff;border-radius:8px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 4px rgba(0,0,0,0.08);">
+        <span>🔄 Section 4: Balance Transfer (BT) Benefit & Savings Matrix</span>
+        <button class="btn btn-ghost btn-sm" style="background:#fff;color:#065f46;" onclick="fdAddBtRow()">＋ Add BT Row</button>
+      </div>
+
+      <div class="fd-matrix-container" style="overflow-x:auto;">
+        <table class="fd-table">
+          <thead>
+            <tr style="background:#065f46;color:#fff;">
+              <th rowspan="2">Lender / Bank</th>
+              <th rowspan="2" style="text-align:right;">Principal (POS)</th>
+              <th colspan="5" style="text-align:center;background:#047857;">Existing Loan Position</th>
+              <th colspan="2" style="text-align:center;background:#b45309;">Foreclosure</th>
+              <th colspan="4" style="text-align:center;background:#1e40af;">Offered Consolidated Facility</th>
+              <th colspan="2" style="text-align:center;background:#581c87;">PF & Stamp Charges</th>
+              <th rowspan="2" style="text-align:right;background:#10b981;">Customer Net Benefit</th>
+              <th rowspan="2"></th>
+            </tr>
+            <tr style="background:#0f172a;color:#cbd5e1;font-size:11px;">
+              <th style="text-align:center;">ROI %</th>
+              <th style="text-align:right;">EMI</th>
+              <th style="text-align:center;">Tenure (M)</th>
+              <th style="text-align:right;">Total Pay</th>
+              <th style="text-align:right;">Interest</th>
+              <th style="text-align:center;">FC %</th>
+              <th style="text-align:right;">FC Charges</th>
+              <th style="text-align:center;">ROI %</th>
+              <th style="text-align:right;">EMI</th>
+              <th style="text-align:right;">Total Pay</th>
+              <th style="text-align:right;">Interest</th>
+              <th style="text-align:center;">PF %</th>
+              <th style="text-align:right;">Charges</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(() => {
+          const btRows = fdData.btAnalysis || [];
+          const totPrincipal = btRows.reduce((s, r) => s + (Number(r.principal) || 0), 0);
+          const totExEmi = btRows.reduce((s, r) => s + (Number(r.existingEmi) || 0), 0);
+          const totExPay = btRows.reduce((s, r) => s + (Number(r.totalPayExisting) || 0), 0);
+          const totExInt = btRows.reduce((s, r) => s + (Number(r.interestExisting) || 0), 0);
+          const totFc = btRows.reduce((s, r) => s + (Number(r.fcCharges) || 0), 0);
+          const totOfEmi = btRows.reduce((s, r) => s + (Number(r.offeredEmi) || 0), 0);
+          const totOfPay = btRows.reduce((s, r) => s + (Number(r.totalPayOffered) || 0), 0);
+          const totOfInt = btRows.reduce((s, r) => s + (Number(r.interestOffered) || 0), 0);
+          const totPf = btRows.reduce((s, r) => s + (Number(r.pfStampCharges) || 0), 0);
+          const totBenefit = btRows.reduce((s, r) => s + (Number(r.netBenefit) || 0), 0);
+
+          return btRows.map((bt, bIdx) => {
+            const benefit = Number(bt.netBenefit) || 0;
+            const benefitColor = benefit >= 0 ? '#059669' : '#dc2626';
+            return `
+                <tr>
+                  <td><input class="fd-input fd-bold" value="${bt.bank || ''}" placeholder="Bank" oninput="fdUpdateBtField(${bIdx},'bank',this.value)"/></td>
+                  <td><input class="fd-input fd-num-input" value="${bt.principal !== undefined ? bt.principal : ''}" placeholder="0" oninput="fdUpdateBtField(${bIdx},'principal',this.value)"/></td>
+                  <td style="text-align:center;"><input class="fd-input" style="text-align:center;width:55px;" value="${bt.existingRoi !== undefined ? bt.existingRoi : ''}" placeholder="%" oninput="fdUpdateBtField(${bIdx},'existingRoi',this.value)"/></td>
+                  <td><input class="fd-input fd-num-input" value="${bt.existingEmi !== undefined ? bt.existingEmi : ''}" placeholder="0" oninput="fdUpdateBtField(${bIdx},'existingEmi',this.value)"/></td>
+                  <td style="text-align:center;"><input class="fd-input" style="text-align:center;width:45px;" value="${bt.pendingTenure !== undefined ? bt.pendingTenure : ''}" placeholder="Mo" oninput="fdUpdateBtField(${bIdx},'pendingTenure',this.value)"/></td>
+                  <td style="text-align:right;font-family:var(--font-mono);">${formatNum(bt.totalPayExisting)}</td>
+                  <td style="text-align:right;font-family:var(--font-mono);">${formatNum(bt.interestExisting)}</td>
+                  <td style="text-align:center;"><input class="fd-input" style="text-align:center;width:45px;" value="${bt.fcPercent !== undefined ? bt.fcPercent : ''}" placeholder="%" oninput="fdUpdateBtField(${bIdx},'fcPercent',this.value)"/></td>
+                  <td style="text-align:right;font-family:var(--font-mono);color:#dc2626;">${formatNum(bt.fcCharges)}</td>
+                  <td style="text-align:center;background:#f0fdf4;"><input class="fd-input" style="text-align:center;width:55px;" value="${bt.offeredRoi !== undefined ? bt.offeredRoi : ''}" placeholder="%" oninput="fdUpdateBtField(${bIdx},'offeredRoi',this.value)"/></td>
+                  <td style="background:#f0fdf4;"><input class="fd-input fd-num-input" value="${bt.offeredEmi !== undefined ? bt.offeredEmi : ''}" placeholder="0" oninput="fdUpdateBtField(${bIdx},'offeredEmi',this.value)"/></td>
+                  <td style="text-align:right;font-family:var(--font-mono);background:#f0fdf4;">${formatNum(bt.totalPayOffered)}</td>
+                  <td style="text-align:right;font-family:var(--font-mono);background:#f0fdf4;">${formatNum(bt.interestOffered)}</td>
+                  <td style="text-align:center;"><input class="fd-input" style="text-align:center;width:45px;" value="${bt.pfStampPercent !== undefined ? bt.pfStampPercent : ''}" placeholder="%" oninput="fdUpdateBtField(${bIdx},'pfStampPercent',this.value)"/></td>
+                  <td style="text-align:right;font-family:var(--font-mono);color:#7c3aed;">${formatNum(bt.pfStampCharges)}</td>
+                  <td style="text-align:right;font-family:var(--font-mono);font-weight:800;color:${benefitColor};background:${benefit >= 0 ? '#ecfdf5' : '#fef2f2'};">${formatNum(benefit)}</td>
+                  <td style="text-align:center;"><button class="fd-remove-btn" onclick="fdRemoveBtRow(${bIdx})">✕</button></td>
+                </tr>
+                `;
+          }).join('') + `
+              <tr style="background:#f0f9ff;font-weight:700;border-top:2px solid #059669;font-family:var(--font-mono);">
+                <td style="font-weight:800;color:#065f46;">TOTALS & CONSOLIDATED BENEFIT</td>
+                <td style="text-align:right;">${formatNum(totPrincipal)}</td>
+                <td></td>
+                <td style="text-align:right;">${formatNum(totExEmi)}</td>
+                <td></td>
+                <td style="text-align:right;">${formatNum(totExPay)}</td>
+                <td style="text-align:right;">${formatNum(totExInt)}</td>
+                <td></td>
+                <td style="text-align:right;color:#dc2626;">${formatNum(totFc)}</td>
+                <td></td>
+                <td style="text-align:right;">${formatNum(totOfEmi)}</td>
+                <td style="text-align:right;">${formatNum(totOfPay)}</td>
+                <td style="text-align:right;">${formatNum(totOfInt)}</td>
+                <td></td>
+                <td style="text-align:right;color:#7c3aed;">${formatNum(totPf)}</td>
+                <td style="text-align:right;font-weight:900;color:#047857;font-size:14px;background:#d1fae5;">${formatNum(totBenefit)}</td>
+                <td></td>
+              </tr>
+              `;
+        })()}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Section 5: Parallel Tenure Comparison -->
+      <div style="font-family:var(--font-display);font-weight:700;font-size:16px;margin: 16px 0 8px;padding:10px 16px;background:linear-gradient(135deg, #334155 0%, #475569 100%);color:#ffffff;border-radius:8px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 4px rgba(0,0,0,0.08);">
+        <span>⚖ Section 5: Parallel Tenure Payoff & Cash Flow Comparison</span>
+      </div>
+
+      <div class="fd-matrix-container" style="overflow-x:auto;">
+        <table class="fd-table">
+          <thead>
+            <tr style="background:#334155;color:#fff;">
+              <th>Lender / Bank</th>
+              <th style="text-align:center;">Ex. ROI %</th>
+              <th style="text-align:right;">Ex. EMI</th>
+              <th style="text-align:center;">Tenure (M)</th>
+              <th style="text-align:right;">Ex. Total Pay</th>
+              <th style="text-align:center;">Offered ROI %</th>
+              <th style="text-align:right;">Offered EMI</th>
+              <th style="text-align:center;">Tenure (M)</th>
+              <th style="text-align:right;">Offered Total Pay</th>
+              <th style="text-align:right;background:#0284c7;">Gross Diff</th>
+              <th style="text-align:right;">FC Charges</th>
+              <th style="text-align:right;">PF+Stamp</th>
+              <th style="text-align:right;background:#b91c1c;">Total Expenses</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(() => {
+          const ptmRows = fdData.loanPlanComparison || [];
+          const totExEmi = ptmRows.reduce((s, r) => s + (Number(r.existingEmi) || 0), 0);
+          const totExPay = ptmRows.reduce((s, r) => s + (Number(r.existingTotalPay) || 0), 0);
+          const totOfEmi = ptmRows.reduce((s, r) => s + (Number(r.offeredEmi) || 0), 0);
+          const totOfPay = ptmRows.reduce((s, r) => s + (Number(r.offeredTotalPay) || 0), 0);
+          const totDiff = ptmRows.reduce((s, r) => s + (Number(r.difference) || 0), 0);
+          const totFc = ptmRows.reduce((s, r) => s + (Number(r.fcCharges) || 0), 0);
+          const totPf = ptmRows.reduce((s, r) => s + (Number(r.pfStampCharges) || 0), 0);
+          const totExp = totFc + totPf;
+
+          return ptmRows.map(p => `
+              <tr>
+                <td style="font-weight:700;">${p.bank || ''}</td>
+                <td style="text-align:center;">${p.existingRoi}%</td>
+                <td style="text-align:right;font-family:var(--font-mono);">${formatNum(p.existingEmi)}</td>
+                <td style="text-align:center;">${p.existingTenure}</td>
+                <td style="text-align:right;font-family:var(--font-mono);">${formatNum(p.existingTotalPay)}</td>
+                <td style="text-align:center;">${p.offeredRoi}%</td>
+                <td style="text-align:right;font-family:var(--font-mono);">${formatNum(p.offeredEmi)}</td>
+                <td style="text-align:center;">${p.offeredTenure}</td>
+                <td style="text-align:right;font-family:var(--font-mono);">${formatNum(p.offeredTotalPay)}</td>
+                <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:#0284c7;background:#f0f9ff;">${formatNum(p.difference)}</td>
+                <td style="text-align:right;font-family:var(--font-mono);color:#dc2626;">${formatNum(p.fcCharges)}</td>
+                <td style="text-align:right;font-family:var(--font-mono);color:#7c3aed;">${formatNum(p.pfStampCharges)}</td>
+                <td style="text-align:right;font-family:var(--font-mono);font-weight:700;color:#b91c1c;background:#fef2f2;">${formatNum((Number(p.fcCharges) || 0) + (Number(p.pfStampCharges) || 0))}</td>
+              </tr>
+              `).join('') + `
+              <tr style="background:#f1f5f9;font-weight:700;border-top:2px solid #475569;font-family:var(--font-mono);">
+                <td style="font-weight:800;">TOTALS</td>
+                <td></td>
+                <td style="text-align:right;">${formatNum(totExEmi)}</td>
+                <td></td>
+                <td style="text-align:right;">${formatNum(totExPay)}</td>
+                <td></td>
+                <td style="text-align:right;">${formatNum(totOfEmi)}</td>
+                <td></td>
+                <td style="text-align:right;">${formatNum(totOfPay)}</td>
+                <td style="text-align:right;color:#0284c7;font-weight:800;">${formatNum(totDiff)}</td>
+                <td style="text-align:right;color:#dc2626;">${formatNum(totFc)}</td>
+                <td style="text-align:right;color:#7c3aed;">${formatNum(totPf)}</td>
+                <td style="text-align:right;color:#b91c1c;font-weight:800;">${formatNum(totExp)}</td>
+              </tr>
+              `;
+        })()}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Section 6: Underwriting Credit Assessment & Multi-Program Sizing Matrix (Private) -->
+      ${window.hideUnderwritingPrivate ? `
+        <div style="background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:8px;padding:12px 18px;margin: 16px 0 10px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:8px;color:#475569;font-weight:600;font-size:13px;">
+            <span>🔒 Section 6: Underwriting Credit Assessment & Multi-Program Sizing Matrix is Private (Hidden)</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="toggleUnderwritingSection()" style="font-weight:700;border:1px solid #cbd5e1;">👁️ Show Underwriting Matrix</button>
+        </div>
+      ` : `
+      <div style="font-family:var(--font-display);font-weight:700;font-size:16px;margin: 16px 0 8px;padding:10px 16px;background:linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);color:#ffffff;border-radius:8px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 4px rgba(0,0,0,0.08);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span>📊 Section 6: Underwriting Credit Assessment & Multi-Program Sizing Matrix</span>
+          <span style="background:rgba(239,68,68,0.25);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">🔒 PRIVATE</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:11px;font-weight:500;color:#94a3b8;font-family:var(--font-mono);">Institutional Credit Appraisal Guidelines</span>
+          <button class="btn btn-ghost btn-sm" onclick="toggleUnderwritingSection()" style="color:#cbd5e1;padding:2px 8px;font-size:11.5px;border:1px solid rgba(255,255,255,0.2);">🔒 Hide</button>
+        </div>
+      </div>
+
+      <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding: 8px 14px; margin-bottom: 10px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;">
+        <div style="font-size:13px;font-weight:700;color:#1e3a5f;display:flex;align-items:center;gap:8px;">
+          <span>⚙ Benchmark Sizing Parameters:</span>
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;font-family:var(--font-mono);font-weight:600;color:#1e293b;">
+          <span style="background:#fff;padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;">FOIR: <b style="color:#2563eb;">60%</b> (50%-65%)</span>
+          <span style="background:#fff;padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;">Max LAP LTV: <b style="color:#059669;">60%</b> (Max 70%)</span>
+          <span style="background:#fff;padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;">ROI: <b style="color:#d97706;">10.50%</b></span>
+          <span style="background:#fff;padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;">Tenure: <b style="color:#4f46e5;">180 Months</b></span>
+          <span style="background:#dbeafe;padding:4px 10px;border-radius:6px;border:1px solid #93c5fd;color:#1e40af;">Per Lakh EMI Factor: <b>₹ 1,105</b></span>
+        </div>
+      </div>
+
+      <div class="fd-matrix-container" style="overflow-x:auto;">
+        <table class="fd-table">
+          <thead>
+            <tr style="background:#0f172a;color:#ffffff;">
+              <th style="min-width:320px;">Eligibility Assessment Program / Model</th>
+              <th style="text-align:center;width:90px;">FOIR (%)</th>
+              <th style="text-align:center;width:90px;">LTV (%)</th>
+              <th style="text-align:right;width:180px;">Max Allowable EMI (₹)</th>
+              <th style="text-align:right;width:200px;">Loan Eligibility (₹)</th>
+              <th style="min-width:380px;">Underwriting Mathematical Logic & Credit Basis</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(() => {
+          const uModels = (fdData.underwritingModels && fdData.underwritingModels.length) ? fdData.underwritingModels : [];
+          const bindingLimit = uModels.length ? Math.min(...uModels.map(m => Number(m.eligibleLoan) || 0).filter(v => v > 0)) : 0;
+
+          return uModels.map(m => `
+              <tr>
+                <td style="font-weight:700;color:#1e3a5f;">${m.name}</td>
+                <td style="text-align:center;">${m.foir !== '-' && m.foir !== null ? (typeof m.foir === 'number' ? (m.foir * 100).toFixed(0) + '%' : m.foir) : '-'}</td>
+                <td style="text-align:center;">${m.ltv !== '-' && m.ltv !== null ? (typeof m.ltv === 'number' ? (m.ltv * 100).toFixed(0) + '%' : m.ltv) : '-'}</td>
+                <td style="text-align:right;font-family:var(--font-mono);font-weight:600;">${m.maxMonthlyEmi !== '-' && m.maxMonthlyEmi !== null && m.maxMonthlyEmi !== 0 ? formatNum(m.maxMonthlyEmi) : '-'}</td>
+                <td style="text-align:right;font-family:var(--font-mono);font-weight:800;color:#2563eb;font-size:13.5px;">${m.eligibleLoan ? formatNum(m.eligibleLoan) : '-'}</td>
+                <td style="font-size:11.5px;color:#475569;">${m.logic}</td>
+              </tr>
+              `).join('') + `
+              <tr style="background:#fef3c7;border-top:3px solid #f59e0b;font-weight:800;">
+                <td style="color:#92400e;font-size:13px;">🏆 RECOMMENDED FINAL UNDERWRITER SANCTION CAPACITY</td>
+                <td style="text-align:center;">-</td>
+                <td style="text-align:center;">-</td>
+                <td style="text-align:right;">-</td>
+                <td style="text-align:right;font-family:var(--font-mono);font-size:16px;color:#b45309;font-weight:900;">${bindingLimit ? formatNum(bindingLimit) : '-'}</td>
+                <td style="font-size:11.5px;color:#92400e;font-weight:700;">Binding Limit: Min( Primary Cashflow Capacity, Net LTV Collateral Limit )</td>
+              </tr>
+              `;
+        })()}
+          </tbody>
+        </table>
+      </div>`}`;
+
+      document.getElementById('matrix-container').innerHTML = html;
+    }
+
+    function fdAddLoanRow() {
+      if (!fdData.loans) fdData.loans = [];
+      fdData.loans.push({
+        loanBelongsTo: '', loanProvider: '', type: '', amount: '', tenure: '', startDate: '', emi: '', emiPaid: '', outstanding: '', overdueCharges: '', bounceCount: '', obligation: 'yes', bt: 'No', emiReflectedIn: ''
+      });
+      render();
+    }
+
+    function fdAddEntity() {
+      fdData.entities.push({
+        role: `Co-Applicant-${fdData.entities.length}`, name: '', proprietor: '', doj: '', vintage: '', employer: '', dob: '', age: '', businessAddress: '',
+        years: [
+          { date: '31-Oct-25', turnover: 0, netIncome: 0, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 },
+          { date: '23-Oct-24', turnover: 0, netIncome: 0, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 },
+          { date: '14-Oct-23', turnover: 0, netIncome: 0, depreciation: 0, interest: 0, rent: 0, addIncome: 0, taxPaid: 0 }
+        ]
+      });
+      render();
+    }
+
+    function fdResetPreset() {
+      localStorage.removeItem('sf_fd_standalone');
+      fdData = defaultBlankDatasheet();
+      render();
+    }
+
+    function toggleUnderwritingSection() {
+      window.hideUnderwritingPrivate = !window.hideUnderwritingPrivate;
+      render();
+    }
+
+    function fdSave() {
+      localStorage.setItem('sf_fd_standalone', JSON.stringify(fdData));
+      alert('Financial Datasheet saved successfully!');
+    }
+
+    function fdExportExcel() {
+      const wb = XLSX.utils.book_new();
+
+      // 1. Business Details Sheet
+      const aoaBiz = [];
+      aoaBiz.push(['Business Details — Financial CAM Matrix']);
+      const r1 = ['']; fdData.entities.forEach(e => r1.push(e.role, '', '')); r1.push('Consider Income', 'Average of 2yr'); aoaBiz.push(r1);
+      const r2 = ['Name']; fdData.entities.forEach(e => r2.push(e.name, '', '')); r2.push('', ''); aoaBiz.push(r2);
+      const r3 = ['DOJ / Vintage in Yrs']; fdData.entities.forEach(e => r3.push(e.doj || '', e.vintage || '', '')); r3.push('', ''); aoaBiz.push(r3);
+      const r4 = ['Business/Employer Name']; fdData.entities.forEach(e => r4.push(e.employer || '', '', '')); r4.push('', ''); aoaBiz.push(r4);
+      const r5 = ['DOB / Age in yrs']; fdData.entities.forEach(e => r5.push(e.dob || '', e.age || '', '')); r5.push('', ''); aoaBiz.push(r5);
+      const r6 = ['ITR/Salary DATE']; fdData.entities.forEach(e => e.years.forEach(y => r6.push(y.date || ''))); r6.push('Consider Income', 'Average of 2yr'); aoaBiz.push(r6);
+
+      ['turnover', 'netIncome', 'depreciation', 'interest', 'rent', 'addIncome', 'taxPaid'].forEach(key => {
+        const row = [key];
+        fdData.entities.forEach(e => e.years.forEach(y => row.push(y[key] || 0)));
+        const tot = computeTotals(key);
+        row.push(tot.considerSum, tot.avg2yr);
+        aoaBiz.push(row);
+      });
+
+      const wsBiz = XLSX.utils.aoa_to_sheet(aoaBiz);
+      XLSX.utils.book_append_sheet(wb, wsBiz, 'Business Details');
+
+      // 2. Loan Details Sheet
+      const aoaLoans = [
+        ['Loan Details — Existing Loan Obligations & BT Matrix'],
+        ['Loan belongs to', 'Loan Provider', 'Type', 'Amount', 'Tenur', 'Loan/ EMI Start Date', 'EMI / Interest', 'No. of EMI Paid', 'Outstanding Amount', 'Over due charges', 'No. Bounce', 'Obligation', 'EMI obligation', 'BT', 'BT EMI', 'BT Amount', 'EMI Reflected in']
+      ];
+
+      (fdData.loans || []).forEach(l => {
+        const isObl = String(l.obligation || '').toLowerCase() === 'yes';
+        const isBt = String(l.bt || '').toLowerCase() === 'yes';
+        const emi = Number(l.emi) || 0;
+        const out = Number(l.outstanding) || 0;
+
+        aoaLoans.push([
+          l.loanBelongsTo || '', l.loanProvider || '', l.type || '', Number(l.amount) || 0,
+          l.tenure !== undefined ? l.tenure : '', l.startDate || '', emi, l.emiPaid !== undefined ? l.emiPaid : '',
+          out, l.overdueCharges !== undefined ? l.overdueCharges : '', l.bounceCount !== undefined ? l.bounceCount : '',
+          isObl ? 'yes' : 'No', isObl ? emi : 0, isBt ? 'yes' : 'No', isBt ? emi : 0, isBt ? out : 0,
+          l.emiReflectedIn || ''
+        ]);
+      });
+
+      const lt = computeLoanTotals();
+      aoaLoans.push([
+        'Total', '', '', lt.totAmount, lt.totTenure || '', '', lt.totEmi, lt.totEmiPaid || '',
+        lt.totOutstanding, lt.totOverdue || '', lt.totBounce || '', 'No', lt.totEmiObligation,
+        'No', lt.totBtEmi, lt.totBtAmount, ''
+      ]);
+
+      const wsLoans = XLSX.utils.aoa_to_sheet(aoaLoans);
+      XLSX.utils.book_append_sheet(wb, wsLoans, 'Loan Details');
+
+      // 3. GST Details Sheet
+      const gstList = (fdData.gstDetailsList && fdData.gstDetailsList.length > 0)
+        ? fdData.gstDetailsList
+        : [defaultGstFirm()];
+      const aoaGst = [
+        ['GST Details — Monthly Turnover Matrix'],
+        []
+      ];
+      gstList.forEach((g, gIdx) => {
+        aoaGst.push([`Firm ${gIdx + 1}: ${g.firmName || 'Unnamed Firm'}`]);
+        aoaGst.push(['Month', g.fy1 || '21-22', g.fy2 || '22-23']);
+        const months = ['April', 'May', 'Jun', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
+        let t1 = 0, t2 = 0;
+        months.forEach((m, mIdx) => {
+          const mData = (g.months && g.months[mIdx]) ? g.months[mIdx] : { fy1: 0, fy2: 0 };
+          const val1 = Number(mData.fy1) || 0;
+          const val2 = Number(mData.fy2) || 0;
+          t1 += val1; t2 += val2;
+          aoaGst.push([m, val1, val2]);
+        });
+        aoaGst.push(['Total', t1, t2]);
+        aoaGst.push([]);
+      });
+      const wsGst = XLSX.utils.aoa_to_sheet(aoaGst);
+      XLSX.utils.book_append_sheet(wb, wsGst, 'GST Details');
+
+      XLSX.writeFile(wb, `Financial_Datasheet_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+
+    function fdImportExcel(evt) {
+      const file = evt.target.files && evt.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+
+          const newEntities = [];
+          const newLoans = [];
+
+          // 1. Parse Business Details sheet
+          const bizSheetName = workbook.SheetNames.find(s => s.toLowerCase().includes('business') || s.toLowerCase().includes('cam') || s.toLowerCase().includes('financial')) || workbook.SheetNames[0];
+          const bizSheet = workbook.Sheets[bizSheetName];
+          if (bizSheet) {
+            const rows = XLSX.utils.sheet_to_json(bizSheet, { header: 1 });
+            if (rows && rows.length > 2) {
+              let roleRowIdx = -1, nameRowIdx = -1, dojRowIdx = -1, empRowIdx = -1, dobRowIdx = -1, addrRowIdx = -1, dateRowIdx = -1;
+              const keyRowIndices = {};
+
+              rows.forEach((r, idx) => {
+                if (!r || !r[0]) return;
+                const label = String(r[0]).trim().toLowerCase();
+                if (label.includes('financial parameter') || label.includes('role') || label.includes('business details')) roleRowIdx = idx;
+                if (label === 'name') nameRowIdx = idx;
+                if (label.includes('doj') || label.includes('vintage')) dojRowIdx = idx;
+                if (label.includes('business') && label.includes('employer')) empRowIdx = idx;
+                if (label.includes('dob') || label.includes('age')) dobRowIdx = idx;
+                if (label.includes('address')) addrRowIdx = idx;
+                if (label.includes('itr') || label.includes('salary date')) dateRowIdx = idx;
+
+                if (label.includes('turnover')) keyRowIndices['turnover'] = idx;
+                if (label.includes('net business') || label.includes('net income') || label.includes('salary income')) keyRowIndices['netIncome'] = idx;
+                if (label.includes('depreciation')) keyRowIndices['depreciation'] = idx;
+                if (label.includes('interest')) keyRowIndices['interest'] = idx;
+                if (label.includes('rent')) keyRowIndices['rent'] = idx;
+                if (label.includes('additional income') || label.includes('remuneration')) keyRowIndices['addIncome'] = idx;
+                if (label.includes('tax paid')) keyRowIndices['taxPaid'] = idx;
+              });
+
+              if (nameRowIdx !== -1) {
+                const nameRow = rows[nameRowIdx];
+                const roleRow = roleRowIdx !== -1 ? rows[roleRowIdx] : [];
+                const dojRow = dojRowIdx !== -1 ? rows[dojRowIdx] : [];
+                const empRow = empRowIdx !== -1 ? rows[empRowIdx] : [];
+                const dobRow = dobRowIdx !== -1 ? rows[dobRowIdx] : [];
+                const addrRow = addrRowIdx !== -1 ? rows[addrRowIdx] : [];
+                const dateRow = dateRowIdx !== -1 ? rows[dateRowIdx] : [];
+
+                for (let col = 1; col < nameRow.length; col += 3) {
+                  const nameVal = nameRow[col];
+                  if (!nameVal || String(nameVal).toLowerCase().includes('consider') || String(nameVal).toLowerCase().includes('average')) continue;
+
+                  const roleVal = (roleRow && roleRow[col]) ? String(roleRow[col]) : 'Applicant';
+                  const dojVal = (dojRow && dojRow[col]) ? String(dojRow[col]) : '';
+                  const vintageVal = (dojRow && dojRow[col + 1]) ? String(dojRow[col + 1]) : '';
+                  const empVal = (empRow && empRow[col]) ? String(empRow[col]) : '';
+                  const dobVal = (dobRow && dobRow[col]) ? String(dobRow[col]) : '';
+                  const ageVal = (dobRow && dobRow[col + 1]) ? String(dobRow[col + 1]) : (dobVal ? calcAgeFromDob(dobVal) : '');
+                  const addrVal = (addrRow && addrRow[col]) ? String(addrRow[col]) : '';
+
+                  const y1Date = (dateRow && dateRow[col]) ? String(dateRow[col]) : '31-Oct-25';
+                  const y2Date = (dateRow && dateRow[col + 1]) ? String(dateRow[col + 1]) : '23-Oct-24';
+                  const y3Date = (dateRow && dateRow[col + 2]) ? String(dateRow[col + 2]) : '14-Oct-23';
+
+                  const getVal = (key, cOffset) => {
+                    const rIdx = keyRowIndices[key];
+                    if (rIdx !== undefined && rows[rIdx]) {
+                      const raw = rows[rIdx][col + cOffset];
+                      return Number(raw) || 0;
+                    }
+                    return 0;
+                  };
+
+                  newEntities.push({
+                    role: roleVal,
+                    name: String(nameVal),
+                    doj: dojVal,
+                    vintage: vintageVal,
+                    employer: empVal,
+                    dob: dobVal,
+                    age: ageVal,
+                    businessAddress: addrVal,
+                    years: [
+                      { date: y1Date, turnover: getVal('turnover', 0), netIncome: getVal('netIncome', 0), depreciation: getVal('depreciation', 0), interest: getVal('interest', 0), rent: getVal('rent', 0), addIncome: getVal('addIncome', 0), taxPaid: getVal('taxPaid', 0) },
+                      { date: y2Date, turnover: getVal('turnover', 1), netIncome: getVal('netIncome', 1), depreciation: getVal('depreciation', 1), interest: getVal('interest', 1), rent: getVal('rent', 1), addIncome: getVal('addIncome', 1), taxPaid: getVal('taxPaid', 1) },
+                      { date: y3Date, turnover: getVal('turnover', 2), netIncome: getVal('netIncome', 2), depreciation: getVal('depreciation', 2), interest: getVal('interest', 2), rent: getVal('rent', 2), addIncome: getVal('addIncome', 2), taxPaid: getVal('taxPaid', 2) }
+                    ]
+                  });
+                }
+              }
+            }
+          }
+
+          // 2. Parse Loan Details sheet
+          const loanSheetName = workbook.SheetNames.find(s => s.toLowerCase().includes('loan') || s.toLowerCase().includes('obligation') || s.toLowerCase().includes('bt'));
+          const loanSheet = loanSheetName ? workbook.Sheets[loanSheetName] : null;
+          if (loanSheet) {
+            const lRows = XLSX.utils.sheet_to_json(loanSheet, { header: 1 });
+            if (lRows && lRows.length > 1) {
+              let headerFound = false;
+              for (const r of lRows) {
+                if (!r || r.length === 0) continue;
+                const col0 = String(r[0] || '').trim();
+                if (col0.toLowerCase().includes('loan belows') || col0.toLowerCase().includes('loan belongs') || col0.toLowerCase().includes('borrower')) {
+                  headerFound = true;
+                  continue;
+                }
+                if (headerFound) {
+                  if (!col0 || col0.toLowerCase().includes('total') || col0.toLowerCase().includes('principle') || col0.toLowerCase().includes('plan') || col0.toLowerCase().includes('eligibility')) break;
+                  newLoans.push({
+                    loanBelongsTo: col0,
+                    loanProvider: r[1] || '',
+                    type: r[2] || '',
+                    amount: Number(r[3]) || '',
+                    tenure: r[4] !== undefined && typeof r[4] !== 'string' ? r[4] : (r[4] || ''),
+                    startDate: r[5] || '',
+                    emi: Number(r[4]) || Number(r[6]) || '',
+                    emiPaid: r[7] !== undefined ? r[7] : '',
+                    outstanding: Number(r[5]) || Number(r[8]) || '',
+                    overdueCharges: r[9] !== undefined ? r[9] : '',
+                    bounceCount: r[10] !== undefined ? r[10] : '',
+                    obligation: String(r[6] || r[11] || 'yes').toLowerCase() === 'yes' ? 'yes' : 'No',
+                    bt: String(r[8] || r[13] || 'no').toLowerCase() === 'yes' ? 'yes' : 'No',
+                    emiReflectedIn: r[16] || r[12] || ''
+                  });
+                }
+              }
+            }
+          }
+
+          if (newEntities.length > 0) fdData.entities = newEntities;
+          if (newLoans.length > 0) fdData.loans = newLoans;
+
+          render();
+          alert(`Successfully imported Excel sheet into Financial Datasheet! (${newEntities.length} entities, ${newLoans.length} loans parsed)`);
+        } catch (err) {
+          alert('Could not import Excel file: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    render();
+
+    /* ── Property Valuation CRUD ── */
+    function fdAddPropertyRow() {
+      if (!fdData.propertyValuation) fdData.propertyValuation = [];
+      fdData.propertyValuation.push({
+        propertyType: '',
+        owner: '',
+        label: '',
+        area: '',
+        constructionArea: '',
+        rate: '',
+        constructionRate: '',
+        totalValue: '',
+        ltv: 70,
+        eligible: ''
+      });
+      render();
+    }
+    function fdRemovePropertyRow(idx) {
+      if (!fdData.propertyValuation) return;
+      fdData.propertyValuation.splice(idx, 1);
+      render();
+    }
+    function fdUpdatePropertyField(idx, field, val) {
+      if (!fdData.propertyValuation || !fdData.propertyValuation[idx]) return;
+      const num = val === '' ? '' : Number(val);
+      if (field === 'ltv') {
+        fdData.propertyValuation[idx][field] = val === '' ? '' : (isNaN(num) ? val : Math.round(num));
+      } else if (field === 'propertyType' || field === 'owner' || field === 'label') {
+        fdData.propertyValuation[idx][field] = val;
+        if (field === 'propertyType') fdData.propertyValuation[idx].label = val;
+      } else {
+        fdData.propertyValuation[idx][field] = (isNaN(num) ? val : num);
+      }
+      const p = fdData.propertyValuation[idx];
+      const lVal = (Number(p.area) || 0) * (Number(p.rate) || 0);
+      const bVal = (Number(p.constructionArea) || 0) * (Number(p.constructionRate) || 0);
+      p.totalValue = lVal + bVal;
+      const rawLtv = Number(p.ltv);
+      const ltvFactor = rawLtv > 1 ? rawLtv / 100 : (rawLtv > 0 ? rawLtv : 0.70);
+      if (field === 'eligible') {
+        const elig = Number(p.eligible) || 0;
+        if (p.totalValue > 0 && elig > 0) {
+          p.ltv = Math.round((elig / p.totalValue) * 100);
+        }
+      } else if (field === 'area' || field === 'rate' || field === 'constructionArea' || field === 'constructionRate') {
+        if (Number(p.eligible) > 0 && p.totalValue > 0) {
+          p.ltv = Math.round((Number(p.eligible) / p.totalValue) * 100);
+        } else if (p.totalValue > 0) {
+          p.eligible = Math.round(p.totalValue * ltvFactor);
+        }
+      } else if (field === 'totalValue') {
+        if (Number(p.eligible) > 0 && Number(p.totalValue) > 0) {
+          p.ltv = Math.round((Number(p.eligible) / Number(p.totalValue)) * 100);
+        } else if (Number(p.totalValue) > 0) {
+          p.eligible = Math.round(Number(p.totalValue) * ltvFactor);
+        }
+      } else if (field === 'ltv') {
+        p.eligible = Math.round(p.totalValue * ltvFactor);
+      }
+      render();
+    }
+
+    /* ── BT Benefit CRUD ── */
+    function fdAddBtRow() {
+      if (!fdData.btAnalysis) fdData.btAnalysis = [];
+      fdData.btAnalysis.push({ bank: '', principal: '', existingRoi: '', existingEmi: '', pendingTenure: '', totalPayExisting: '', interestExisting: '', fcPercent: '', fcCharges: '', offeredRoi: '', offeredEmi: '', totalPayOffered: '', interestOffered: '', pfStampPercent: '', pfStampCharges: '', netBenefit: '' });
+      render();
+    }
+    function fdRemoveBtRow(idx) {
+      if (!fdData.btAnalysis) return;
+      fdData.btAnalysis.splice(idx, 1);
+      render();
+    }
+    function fdUpdateBtField(idx, field, val) {
+      if (!fdData.btAnalysis || !fdData.btAnalysis[idx]) return;
+      const num = val === '' ? '' : Number(val);
+      fdData.btAnalysis[idx][field] = isNaN(num) ? val : num;
+      const r = fdData.btAnalysis[idx];
+      const p = Number(r.principal) || 0;
+      const eEmi = Number(r.existingEmi) || 0;
+      const pt = Number(r.pendingTenure) || 0;
+      const oEmi = Number(r.offeredEmi) || 0;
+
+      r.totalPayExisting = eEmi * pt;
+      r.interestExisting = r.totalPayExisting - p;
+      r.totalPayOffered = oEmi * pt;
+      r.interestOffered = r.totalPayOffered - p;
+      r.fcCharges = Math.round(p * (Number(r.fcPercent) || 0) / 100 * 100) / 100;
+      r.pfStampCharges = Math.round(p * (Number(r.pfStampPercent) || 0) / 100 * 100) / 100;
+      r.netBenefit = Math.round(((r.interestExisting - r.interestOffered) - r.fcCharges - r.pfStampCharges) * 100) / 100;
+      render();
+    }
+
+
+    /* ── Import BT Worksheet (.xlsx) ── */
+    function fdImportBtWorksheet(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: 'array' });
+
+          // Existing Loan Portfolio Sheet
+          const loanSheetName = wb.SheetNames.find(s => s.includes('2') || s.toLowerCase().includes('loan'));
+          if (loanSheetName) {
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[loanSheetName], { header: 1 });
+            const parsedLoans = [];
+            for (let i = 3; i < rows.length; i++) {
+              const r = rows[i];
+              if (!r || !r[0] || String(r[0]).toUpperCase().includes('TOTAL')) break;
+              parsedLoans.push({
+                loanBelongsTo: r[0] || '', loanProvider: r[1] || '', type: r[2] || '',
+                amount: Number(r[3]) || '', tenure: r[4] || '', startDate: r[5] || '',
+                emi: Number(r[6]) || '', emiPaid: r[7] || '', outstanding: Number(r[8]) || '',
+                overdueCharges: 0, bounceCount: 0, obligation: String(r[9] || 'No'), bt: String(r[10] || 'No'),
+                emiReflectedIn: r[11] || ''
+              });
+            }
+            if (parsedLoans.length) fdData.loans = parsedLoans;
+          }
+
+          // Collateral & LTV Sheet
+          const propSheetName = wb.SheetNames.find(s => s.includes('3') || s.toLowerCase().includes('collateral'));
+          if (propSheetName) {
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[propSheetName], { header: 1 });
+            const parsedProps = [];
+            for (let i = 3; i < rows.length; i++) {
+              const r = rows[i];
+              if (!r || !r[0] || String(r[0]).toUpperCase().includes('TOTAL')) break;
+              parsedProps.push({
+                label: r[0] || '', area: Number(r[1]) || '', rate: Number(r[2]) || '',
+                constructionArea: Number(r[4]) || 0, constructionRate: Number(r[5]) || 0,
+                totalValue: Number(r[7]) || 0, ltv: Number(r[8]) || 0.70, eligible: Number(r[9]) || 0
+              });
+            }
+            if (parsedProps.length) fdData.propertyValuation = parsedProps;
+          }
+
+          // BT Benefit Analysis Sheet
+          const btSheetName = wb.SheetNames.find(s => s.includes('4') || s.toLowerCase().includes('benefit'));
+          if (btSheetName) {
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[btSheetName], { header: 1 });
+            const parsedBt = [];
+            for (let i = 3; i < rows.length; i++) {
+              const r = rows[i];
+              if (!r || !r[0] || String(r[0]).toUpperCase().includes('TOTAL')) break;
+              parsedBt.push({
+                bank: r[0] || '', principal: Number(r[1]) || 0,
+                existingRoi: Number(r[2]) ? (Number(r[2]) > 1 ? Number(r[2]) : Number(r[2]) * 100) : '',
+                existingEmi: Number(r[3]) || 0, pendingTenure: Number(r[4]) || 0,
+                totalPayExisting: Number(r[5]) || 0, interestExisting: Number(r[6]) || 0,
+                fcPercent: Number(r[7]) ? (Number(r[7]) > 1 ? Number(r[7]) : Number(r[7]) * 100) : 0,
+                fcCharges: Number(r[8]) || 0,
+                offeredRoi: Number(r[9]) ? (Number(r[9]) > 1 ? Number(r[9]) : Number(r[9]) * 100) : '',
+                offeredEmi: Number(r[10]) || 0, totalPayOffered: Number(r[11]) || 0,
+                interestOffered: Number(r[12]) || 0,
+                pfStampPercent: Number(r[13]) ? (Number(r[13]) > 1 ? Number(r[13]) : Number(r[13]) * 100) : 0,
+                pfStampCharges: Number(r[14]) || 0, netBenefit: Number(r[15]) || 0
+              });
+            }
+            if (parsedBt.length) fdData.btAnalysis = parsedBt;
+          }
+
+          // Underwriting Sheet
+          const uwSheetName = wb.SheetNames.find(s => s.includes('6') || s.toLowerCase().includes('underwriting'));
+          if (uwSheetName) {
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[uwSheetName], { header: 1 });
+            const parsedUw = [];
+            for (let i = 5; i < rows.length; i++) {
+              const r = rows[i];
+              if (!r || !r[0] || String(r[0]).toUpperCase().includes('RECOMMENDED')) continue;
+              parsedUw.push({
+                name: r[0] || '', foir: r[1] !== undefined ? r[1] : '-', ltv: r[2] !== undefined ? r[2] : '-',
+                maxMonthlyEmi: r[3] !== undefined ? r[3] : '-', eligibleLoan: Number(r[4]) || 0, logic: r[5] || ''
+              });
+            }
+            if (parsedUw.length) fdData.underwritingModels = parsedUw;
+          }
+
+          alert('Successfully imported SkyFinserv BT Worksheet!');
+          render();
+        } catch (err) {
+          alert('Import error: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    /* ── Export Full Workbook ── */
+    function fdExportFullWorkbook() {
+      try {
+        window.open('/SkyFinserv_Optimized_BT_Worksheet.xlsx', '_blank');
+      } catch (e) {
+        fdExportExcel();
+      }
+    }
+  </script>
+</body>
+
+</html>

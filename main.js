@@ -81,7 +81,7 @@ async function createWindow() {
               type: 'info',
               title: 'SkyFinserv Desktop',
               message: 'SkyFinserv — Loan Application Portal',
-              detail: 'Desktop Application v1.0.0\nRunning natively on Windows.',
+              detail: 'Desktop Application v1.0.2\nRunning natively on Windows.',
             });
           },
         },
